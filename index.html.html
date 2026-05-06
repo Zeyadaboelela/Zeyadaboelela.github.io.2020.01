@@ -1,0 +1,1188 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .header { padding: 1rem 0 0.5rem; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 1rem; }
+  .progress-bar-bg { background: var(--color-background-secondary); border-radius: 8px; height: 8px; margin: 0.5rem 0; }
+  .progress-bar-fill { background: #1D9E75; border-radius: 8px; height: 8px; transition: width 0.4s; }
+  .stats { display: flex; gap: 12px; margin: 0.5rem 0; flex-wrap: wrap; }
+  .stat { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 6px 14px; font-size: 13px; color: var(--color-text-secondary); }
+  .stat span { font-weight: 500; color: var(--color-text-primary); }
+  .q-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+  .q-num { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .q-text { font-size: 15px; color: var(--color-text-primary); line-height: 1.6; margin-bottom: 1rem; font-weight: 500; }
+  .choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1rem; }
+  .choice-btn { background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 14px; color: var(--color-text-primary); text-align: left; cursor: pointer; transition: all 0.15s; line-height: 1.5; }
+  .choice-btn:hover:not(:disabled) { background: var(--color-background-secondary); border-color: var(--color-border-primary); }
+  .choice-btn.correct { background: #EAF3DE; border-color: #3B6D11; color: #173404; }
+  .choice-btn.wrong { background: #FCEBEB; border-color: #A32D2D; color: #501313; }
+  .choice-btn:disabled { cursor: default; }
+  .reveal-section { display: none; border-top: 0.5px solid var(--color-border-tertiary); padding-top: 1rem; margin-top: 0.5rem; }
+  .reveal-section.show { display: block; }
+  .section-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-secondary); margin-bottom: 4px; margin-top: 0.75rem; }
+  .section-label:first-child { margin-top: 0; }
+  .answer-badge { display: inline-block; background: #EAF3DE; color: #173404; border-radius: var(--border-radius-md); padding: 4px 12px; font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .explanation { font-size: 14px; color: var(--color-text-primary); line-height: 1.7; }
+  .keywords { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kw { background: #E6F1FB; color: #0C447C; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 500; }
+  .normal-vals { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
+  .tip { background: #FAEEDA; border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 13px; color: #633806; line-height: 1.7; }
+  .nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; }
+  .nav-btn { background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 8px 18px; font-size: 14px; color: var(--color-text-primary); cursor: pointer; }
+  .nav-btn:hover { background: var(--color-background-secondary); }
+  .nav-btn.primary { background: #1D9E75; border-color: #1D9E75; color: white; }
+  .nav-btn.primary:hover { background: #0F6E56; }
+  .q-counter { font-size: 13px; color: var(--color-text-secondary); margin-left: auto; }
+  .filter-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .filter-btn { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: var(--color-text-secondary); cursor: pointer; }
+  .filter-btn.active { background: #1D9E75; border-color: #1D9E75; color: white; }
+  .emoji { font-size: 16px; }
+</style>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+    <span style="font-size:20px;font-weight:500;color:var(--color-text-primary);">Clinical Medical Sciences</span>
+    <span style="font-size:13px;color:var(--color-text-secondary);">2020 Grad Exam — 100 Qs</span>
+  </div>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog" style="width:1%"></div></div>
+  <div class="stats">
+    <div class="stat">Current: <span id="cur-stat">1</span>/100</div>
+    <div class="stat">Correct: <span id="cor-stat" style="color:#1D9E75">0</span></div>
+    <div class="stat">Wrong: <span id="wrg-stat" style="color:#A32D2D">0</span></div>
+    <div class="stat">Skipped: <span id="skp-stat">0</span></div>
+  </div>
+  <div class="filter-row" id="filter-row">
+    <span style="font-size:12px;color:var(--color-text-secondary);align-self:center;">Jump to:</span>
+    <button class="filter-btn active" onclick="setFilter('all')">All</button>
+    <button class="filter-btn" onclick="setFilter('wrong')">Wrong only</button>
+    <button class="filter-btn" onclick="setFilter('unanswered')">Unanswered</button>
+    <input type="number" min="1" max="100" placeholder="Go to Q#" id="goto-inp" style="width:90px;padding:4px 8px;font-size:12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);" onchange="gotoQ(this.value)">
+  </div>
+</div>
+
+<div id="q-area"></div>
+
+<div class="nav">
+  <button class="nav-btn" onclick="move(-1)">&#8592; Prev</button>
+  <button class="nav-btn" onclick="skipQ()">Skip</button>
+  <button class="nav-btn primary" onclick="move(1)">Next &#8594;</button>
+  <span class="q-counter" id="q-cnt"></span>
+</div>
+
+<script>
+const qs = [
+  {
+    n:1, topic:"Neurology/Memory",
+    q:"A patient can repeat a five-digit span forward and backward and is able to list five months backwards. He is unable to remember a list of four objects given to him five minutes previously. This type of memory problem would be found in a disease affecting which one of the following?",
+    choices:["A. Frontal lobe","B. Temporal lobe","C. Parietal lobe","D. Occipital lobe","E. Brain stem"],
+    ans:1,
+    exp:"The patient has intact working memory (digit span, reverse months) but impaired delayed recall — this is a classic anterograde memory deficit. The hippocampus, located in the medial temporal lobe, is the key structure for forming new long-term memories. Damage here (e.g., in Alzheimer's or temporal lobe epilepsy) causes this pattern.",
+    kw:["Anterograde amnesia","Hippocampus","Temporal lobe","Delayed recall","Working memory"],
+    nv:"Normal digit span: 5-9 forward, 4-6 backward",
+    tip:"Mnemonic: 'TEMPORAL = TEMPORary to LONG-term storage' — hippocampus converts short-term to long-term memory. If they CAN do digit spans but CAN'T recall later = temporal lobe problem! 🧠"
+  },
+  {
+    n:2, topic:"Hematology",
+    q:"Which is the preferred treatment for chronic aplastic anemia?",
+    choices:["A. Folic acid","B. Vitamin B2","C. Ferrous sulfate","D. Cyclosporin A","E. Corticosteroids"],
+    ans:3,
+    exp:"Chronic aplastic anemia is an immune-mediated destruction of hematopoietic stem cells. For patients who are not candidates for bone marrow transplant (older age, no matched donor), immunosuppressive therapy with Cyclosporin A (+ Anti-thymocyte globulin) is preferred. Folic acid treats megaloblastic anemia; iron treats iron-deficiency anemia.",
+    kw:["Aplastic anemia","Cyclosporin A","Immunosuppression","Hematopoietic stem cells","Anti-thymocyte globulin"],
+    nv:"Normal Hb: Male 13-17 g/dL, Female 12-16 g/dL | Platelets: 150,000-400,000/µL",
+    tip:"Remember: Aplastic anemia = IMMUNE attack on marrow → treat with IMMUNE suppression (Cyclosporin A). NOT nutritional supplements! The gold standard is BMT if young + matched donor. 💊"
+  },
+  {
+    n:3, topic:"Infectious Disease",
+    q:"The CDC staging system of the HIV infection bases on:",
+    choices:["A. The concentration of HIV RNA per 1 ml of plasma","B. Clinical categories and the Interferon-β level in blood","C. The concentration of natural killer (NK) cells per 1 µl of blood","D. Clinical categories and the CD4+ T cell count per 1µl of blood","E. The whole T-cell count per 1 µl of blood"],
+    ans:3,
+    exp:"The CDC HIV staging system uses TWO parameters: (1) Clinical categories (A=asymptomatic/acute HIV/PGL; B=symptomatic not AIDS-defining; C=AIDS-defining conditions) AND (2) CD4+ T-cell count thresholds (≥500, 200-499, <200 cells/µL). CD4 <200 = AIDS regardless of symptoms.",
+    kw:["HIV staging","CD4+ T cells","AIDS","CDC classification","Immunosuppression"],
+    nv:"Normal CD4: 500-1500 cells/µL | AIDS if CD4 <200 cells/µL",
+    tip:"AIDS = CD4 <200 OR AIDS-defining illness. Memory trick: '200 = Too LOW to go' — below 200 you get opportunistic infections! 🦠"
+  },
+  {
+    n:4, topic:"Hematology",
+    q:"A 36-year-old female has presented with fever and fatigue for one month. Physical examination shows no splenomegaly. Blood routine test shows WBC 2,700/μL, hemoglobin 8.0 g/dL, and platelet count 15,000/μL. Blast cells can be seen in blood smear. Which is the most likely diagnosis?",
+    choices:["A. Acute leukemia","B. Aplastic anemia","C. Myelofibrosis","D. Chronic leukemia","E. Acute infection"],
+    ans:0,
+    exp:"KEY FINDING: Blast cells on peripheral blood smear = acute leukemia until proven otherwise. Pancytopenia (low WBC, Hb, platelets) + blast cells = hallmark of acute leukemia. In aplastic anemia you would NOT see blasts — the marrow is empty. Chronic leukemia shows mature cells.",
+    kw:["Blast cells","Pancytopenia","Acute leukemia","Blood smear","Peripheral blood"],
+    nv:"Normal WBC: 4,500-11,000/µL | Blasts: <5% in normal marrow | >20% blasts in marrow = AML/ALL",
+    tip:"BLASTS = BAD = ACUTE leukemia. No blasts + empty marrow = Aplastic. Remember: Blasts are immature, primitive cells that shouldn't be in blood! 🔬"
+  },
+  {
+    n:5, topic:"Cardiology",
+    q:"A 76-year-old man presented with gradual onset shortness of breath worsening over 2 months, unable to lie flat. A diagnosis of heart failure was confirmed. Which one of the following has NOT been proved to improve the prognosis of this patient in the long run?",
+    choices:["A. Spironolactone","B. Captopril","C. Losartan","D. Digoxin","E. Metoprolol"],
+    ans:3,
+    exp:"Digoxin improves symptoms and reduces hospitalizations in heart failure, but has NOT been proven to reduce mortality in large trials (DIG trial). In contrast, ACE inhibitors (Captopril), ARBs (Losartan), beta-blockers (Metoprolol), and aldosterone antagonists (Spironolactone) all have proven mortality benefit in HF with reduced EF.",
+    kw:["Heart failure","Digoxin","Mortality benefit","ACE inhibitors","Beta-blockers","Spironolactone","Prognosis"],
+    nv:"Normal EF: 55-70% | HFrEF: EF <40%",
+    tip:"Mnemonic for HF mortality benefit: 'ABCDS' — ACE/ARB, Beta-blocker, Cardiac (Spiro/Eplerenone), SGLT2i. Digoxin is symptom relief ONLY, not survival! ❤️"
+  },
+  {
+    n:6, topic:"Gastroenterology",
+    q:"Male, 26 years old, usually has fasting and abdominal pain at night for 3 years, which can be relieved after eating. 1 hour before the meal, he suddenly felt severe pain in the upper abdomen. The first check should be:",
+    choices:["A. Abdominal ultrasound","B. Abdominal CT","C. Plain abdominal radiograph","D. Emergency gastroscopy","E. Blood WBC"],
+    ans:2,
+    exp:"This patient has peptic ulcer disease (relieved by eating = duodenal ulcer pattern). Sudden severe upper abdominal pain suggests perforation. The FIRST investigation for suspected perforation is plain abdominal X-ray (erect) to look for FREE AIR UNDER THE DIAPHRAGM — a quick, cheap, highly specific finding. Gastroscopy is CONTRAINDICATED in perforation!",
+    kw:["Peptic ulcer","Perforation","Free air","Plain radiograph","Pneumoperitoneum","Duodenal ulcer"],
+    nv:"Free air under diaphragm = perforation until proven otherwise",
+    tip:"Sudden severe pain + ulcer history = PERFORATION! FIRST test = ERECT CXR or abdominal X-ray for FREE AIR. Never scope a perforation! X-ray first, always! 📷"
+  },
+  {
+    n:7, topic:"Respiratory",
+    q:"The most common pathogen for acute exacerbation of bronchiectasis is:",
+    choices:["A. Streptococcus pneumoniae","B. Haemophilus influenzae and Pseudomonas aeruginosa","C. Staphylococcus aureus","D. Anaerobic bacteria","E. Atypical pathogens"],
+    ans:1,
+    exp:"In bronchiectasis, chronic airway damage and mucus pooling predispose to colonization and infection. Haemophilus influenzae is the most common early colonizer, while Pseudomonas aeruginosa is predominant in advanced bronchiectasis. Both are the primary pathogens in acute exacerbations. Strep pneumoniae is more typical for community-acquired pneumonia.",
+    kw:["Bronchiectasis","Haemophilus influenzae","Pseudomonas aeruginosa","Exacerbation","Chronic lung infection"],
+    nv:null,
+    tip:"Bronchiectasis bugs: 'H.i. FIRST, Pseudo LATER'. As the disease progresses, Pseudomonas takes over. Think 'Damaged Airways = Pseudomonas plays!' 🦠"
+  },
+  {
+    n:8, topic:"Cardiology",
+    q:"A 68-year-old man with shortness of breath for 5 months, orthopnea, bilateral crackles, pitting edema, LVH on ECG, pro-BNP 5400 pg/mL, troponin 0.22 ng/mL, EF 38% on echo. What is the most likely diagnosis?",
+    choices:["A. AECOPD","B. STEMI","C. NSTEMI","D. Heart failure","E. Stroke"],
+    ans:3,
+    exp:"Classic heart failure presentation: orthopnea, bilateral crackles (pulmonary edema), pitting edema (right-sided), elevated pro-BNP (>900 pg/mL strongly suggests HF), dilated LV with reduced EF 38% = HFrEF. The mildly elevated troponin is common in HF due to myocardial stress — does not diagnose acute MI without clinical context/ECG changes.",
+    kw:["Heart failure","BNP","Ejection fraction","HFrEF","Orthopnea","Pulmonary edema"],
+    nv:"BNP >100 pg/mL or NT-proBNP >300 pg/mL suggests HF | EF <40% = HFrEF",
+    tip:"High BNP + Low EF + bilateral crackles + edema = HEART FAILURE formula. BNP = 'Breathless Natriuretic Peptide' — it rises when the heart is stretched! 💙"
+  },
+  {
+    n:9, topic:"Respiratory",
+    q:"A woman, 34 years old, worker, repeatedly coughed for more than 20 years, coughed with yellow and purulent sputum after being cooled, and had a sudden hemorrhage of 500ml. X-ray shows lower left lung bead-like change with exudation. Which disease is most likely?",
+    choices:["A. Acute bronchitis","B. Chronic bronchitis","C. Tuberculosis","D. Lung cancer","E. Bronchial dilation (Bronchiectasis)"],
+    ans:4,
+    exp:"Key features: 20-year history of recurrent productive cough + purulent sputum + massive hemoptysis (500mL) + 'bead-like' (cystic/dilated) changes on X-ray at lower lobe. This is BRONCHIECTASIS. The lower lobe predilection, chronic productive cough, and 'tram-track' or bead-like shadows are classic. TB tends to involve upper lobes.",
+    kw:["Bronchiectasis","Hemoptysis","Bead-like shadows","Chronic productive cough","Lower lobe"],
+    nv:"Massive hemoptysis: >300-500 mL/24hrs",
+    tip:"BRONCHIECTASIS = 'Bronchi that are ECTATIC (dilated)'. Clues: Chronic cough + LOTS of sputum + hemoptysis + lower lobe changes. Bead-like = saccular bronchiectasis on X-ray! 🫁"
+  },
+  {
+    n:10, topic:"Infectious Disease",
+    q:"As for typhoid fever, which is NOT correct?",
+    choices:["A. Caused by S typhi","B. Is a severe multisystemic illness","C. The classic prolonged fever","D. Is self-limited disease","E. Rigors are rare"],
+    ans:3,
+    exp:"Typhoid fever IS caused by Salmonella typhi. It IS a severe multisystemic illness. It DOES cause prolonged sustained fever (stepladder pattern). Rigors ARE rare in typhoid (unlike malaria/bacteremia). However, typhoid is NOT simply self-limited — without antibiotics it can be fatal (intestinal perforation, hemorrhage). Thus 'self-limited' is the INCORRECT statement.",
+    kw:["Typhoid fever","Salmonella typhi","Stepladder fever","Enteric fever","Rose spots"],
+    nv:"Typhoid incubation: 1-3 weeks | Fever: sustained, up to 40°C",
+    tip:"Typhoid is NOT self-limited — it can kill! Remember: rose spots, relative bradycardia, stepladder fever, and NO rigors. 'RRSN' = Rose spots, Relative bradycardia, Stepladder fever, No rigors! 🌡️"
+  },
+  {
+    n:11, topic:"Gastroenterology",
+    q:"Female, 24 years old, abdominal distension for one month, low fever. Exam: abdominal distention, tenderness and rebound pain, liver/spleen not touched, positive mobile dullness. Ascites = exudate, ADA 60 U/L. Most likely diagnosis?",
+    choices:["A. Spontaneous peritonitis","B. Cirrhotic ascites","C. Tuberculous peritonitis","D. Suppurative peritonitis","E. Cancerous ascites"],
+    ans:2,
+    exp:"KEY CLUE: Elevated ADA (Adenosine deaminase) in ascitic fluid is a highly sensitive marker for TUBERCULOUS peritonitis (ADA >40 U/L is significant). Combined with: young patient, low-grade fever, exudative ascites, and chronic course — this is classic TB peritonitis. Cirrhotic ascites is a transudate. Suppurative peritonitis would be more acute and severe.",
+    kw:["ADA","Adenosine deaminase","Tuberculous peritonitis","Exudate","Ascites","TB"],
+    nv:"ADA >40 U/L in ascites = strongly suggests TB peritonitis | Exudate: protein >25g/L, LDH elevated",
+    tip:"ADA elevated in ascites = TB peritonitis! Think 'ADA = Anti-Disease Agent for TB'. Also remember: young patient + low fever + exudate = TB until proven otherwise! 🦠"
+  },
+  {
+    n:12, topic:"Gastroenterology",
+    q:"The most widely used method to detect Hp (H. pylori) in clinic is:",
+    choices:["A. Rapid urease test","B. Histopathological examination","C. 13C/14C-urea breath test","D. Detection of serum Hp antibody","E. Bacterial culture"],
+    ans:2,
+    exp:"The 13C/14C-urea breath test (UBT) is the gold standard non-invasive test for H. pylori — it's the most widely used in clinical practice. It detects active infection and is used to confirm eradication. Rapid urease test (RUT) requires endoscopy biopsy. Serology can't distinguish active from past infection. Culture is gold standard for sensitivity testing but impractical.",
+    kw:["H. pylori","Urea breath test","13C","14C","Non-invasive","Active infection"],
+    nv:null,
+    tip:"UBT = Best test for H. pylori! Remember: 'You BREATHE for H. pylori' — non-invasive, detects ACTIVE infection, great for checking eradication. Serology = past or present, UBT = DEFINITELY now! 😮‍💨"
+  },
+  {
+    n:13, topic:"Psychiatry",
+    q:"A 27-year-old woman with episodic sadness since adolescence. Good periods seldom last >2 weeks. Able to work but not optimally. Focuses on repeated disappointments and low self-esteem rather than discrete depressive symptoms. Most likely diagnosis?",
+    choices:["A. Major depression with melancholia","B. Adjustment disorder with depressed mood","C. Cyclothymia","D. Childhood depression","E. Dysthymia"],
+    ans:4,
+    exp:"Dysthymia (now called Persistent Depressive Disorder in DSM-5) = chronically depressed mood for ≥2 years, with periods of normal mood lasting <2 months. The patient has this since adolescence, can function, but is chronically low. Not meeting full criteria for MDD. The key is CHRONIC + LOW-GRADE + FUNCTIONAL. Cyclothymia has both hypo/depressive episodes.",
+    kw:["Dysthymia","Persistent depressive disorder","Chronic depression","Low-grade","Mood disorder"],
+    nv:"Dysthymia duration: ≥2 years (adults), ≥1 year (children)",
+    tip:"DYSTHYMIA = 'Dis-THYMOS' (bad mood) — like a grey cloud that never fully goes away. Think 'Dysthmia = Dreary but Doesn't stop Daily duties'. It's the 'double depression' when MDD hits on top! 😔"
+  },
+  {
+    n:14, topic:"Respiratory",
+    q:"Male, 42 years old with idiopathic pulmonary fibrosis. As for the characteristics of the disease, the following is INCORRECT:",
+    choices:["A. Restricted ventilation impairment","B. Diffusion disorder and hypoxemia","C. Clubbing finger (toe)","D. The total number of d-half cells and eosinophils increased significantly","E. ANA was positive"],
+    ans:3,
+    exp:"IPF is characterised by: restrictive pattern (not obstructive), reduced DLCO (diffusion), progressive hypoxemia, finger clubbing, and sometimes positive ANA (low titer). The INCORRECT finding is: significantly increased eosinophils — this is NOT a feature of IPF. Eosinophilia would suggest eosinophilic pneumonia. IPF pathology shows fibroblastic foci, not eosinophils.",
+    kw:["IPF","Idiopathic pulmonary fibrosis","Restrictive","DLCO","Clubbing","UIP pattern"],
+    nv:"FVC <80% + FEV1/FVC normal/high = restrictive | DLCO reduced in IPF",
+    tip:"IPF = FIBROSIS = RESTRICTION (can't expand) = low FVC, normal/high FEV1/FVC ratio. Velcro crackles + clubbing + bilateral lower lobe honeycombing on CT = IPF! 🔬"
+  },
+  {
+    n:15, topic:"Pharmacology",
+    q:"Which one of the following medicines may result in hypokalemia?",
+    choices:["A. Aldosterone","B. Captopril","C. Hydrochlorothiazide","D. Irbesartan","E. Digoxin"],
+    ans:2,
+    exp:"Hydrochlorothiazide (thiazide diuretic) blocks NaCl reabsorption in the distal convoluted tubule, leading to increased K+ secretion → HYPOKALEMIA. Aldosterone promotes K+ excretion (endogenous hormone), but it's the excess (primary hyperaldosteronism) that causes hypokalemia. Captopril (ACE-I) and Irbesartan (ARB) actually RAISE K+ (hyperkalemia risk). Digoxin doesn't directly cause it.",
+    kw:["Hypokalemia","Thiazide","Hydrochlorothiazide","ACE inhibitor","Potassium"],
+    nv:"Normal K+: 3.5-5.0 mmol/L | Hypokalemia: <3.5 mmol/L",
+    tip:"THIAZIDES and LOOP diuretics = LOSE K+. ACE inhibitors and ARBs = KEEP K+ (dangerous in renal failure!). Mnemonic: 'THIAZIDES THROW away K+' 💊"
+  },
+  {
+    n:16, topic:"Cardiology",
+    q:"A 90-year-old woman with hypertension presents with exertional chest pain. Exam: BP 140/76, HR 78. Systolic murmur over 2nd ICS right sternal border radiating to carotids. Most likely diagnosis?",
+    choices:["A. Aortic stenosis","B. Aortic regurgitation","C. Mitral stenosis","D. Mitral regurgitation","E. Tricuspid regurgitation"],
+    ans:0,
+    exp:"Classic aortic stenosis: SYSTOLIC murmur at 2nd ICS RIGHT sternal border (aortic area) RADIATING to carotids + exertional chest pain + elderly with hypertension. The classic triad of AS = Syncope, Angina, Dyspnea (SAD). Aortic regurgitation = diastolic murmur. Mitral murmurs are at the apex.",
+    kw:["Aortic stenosis","Systolic murmur","Aortic area","Carotid radiation","SAD triad","Calcific AS"],
+    nv:"Normal aortic valve area: 3-4 cm² | Severe AS: <1 cm²",
+    tip:"Aortic Stenosis = 'RADS' = Right sternal border, Aortic area (2nd ICS), Diastolic gap (actually systolic!), Shoots to neck. Triad: SAD = Syncope, Angina, Dyspnea! 🫀"
+  },
+  {
+    n:17, topic:"Neurology/Psychiatry",
+    q:"A 69-year-old man with slow, stepwise decline in cognitive functioning over 1 year. Wife noticed memory and navigation problems. Patient says he feels fine, is depressed about memory loss. Eating and sleeping well. Most likely diagnosis?",
+    choices:["A. Multi-infarct dementia","B. Mood disorder secondary to a general medical condition","C. Schizoaffective disorder","D. Delirium","E. Major depression"],
+    ans:0,
+    exp:"STEPWISE decline = vascular/multi-infarct dementia (not gradual as in Alzheimer's). The patient has INSIGHT (aware of memory loss, depressed about it) — this is not anosognosia. The stepwise pattern suggests small strokes causing progressive damage. Delirium is acute. Major depression causes pseudodementia but without stepwise pattern. Patient functions (eats/sleeps).",
+    kw:["Multi-infarct dementia","Vascular dementia","Stepwise decline","Stroke","Insight preserved"],
+    nv:null,
+    tip:"STEPWISE = STROKES = Vascular dementia. Alzheimer's = GRADUAL smooth decline. Easy: Steps = Strokes! Also, patient has INSIGHT (knows they forget) — unlike late Alzheimer's! 🧠"
+  },
+  {
+    n:18, topic:"Infectious Disease",
+    q:"Which of the following is the basis for confirming sepsis?",
+    choices:["A. Chill and fever, symptoms of poisoning","B. Rash","C. Hepatomegaly and splenomegaly","D. White blood cells and neutrophils count increased significantly","E. Blood and/or bone marrow culture positive"],
+    ans:4,
+    exp:"The definitive/confirmatory diagnosis of sepsis requires microbiological evidence — positive blood culture (or bone marrow culture) identifies the causative organism. Clinical features (fever, chills, elevated WBC) suggest sepsis but are NOT confirmatory — they can occur in many conditions. Culture = gold standard for confirming infectious etiology.",
+    kw:["Sepsis","Blood culture","Bacteremia","Confirmatory diagnosis","Gold standard"],
+    nv:"Blood culture: 2 sets from different sites before antibiotics | Positive = significant",
+    tip:"'CULTURE is KING' for confirming infection! Always draw blood cultures BEFORE giving antibiotics. 2 sets from 2 sites = best sensitivity. Sepsis confirmed = positive culture! 🧫"
+  },
+  {
+    n:19, topic:"Gastroenterology",
+    q:"Male, 25 years old, acute left upper abdominal pain after excessive alcohol, nausea, vomiting without relief. Tenderness + muscle tension, mobile dullness (-), X-ray: intestinal inflation, 2-3 liquid levels, NO free gas under diaphragm. Most likely diagnosis?",
+    choices:["A. Acute gastroenteritis","B. Perforation of ulceration","C. Acute cholecystitis","D. Acute pancreatitis","E. Acute intestinal obstruction"],
+    ans:3,
+    exp:"Acute pancreatitis after ALCOHOL + severe epigastric/LUQ pain + nausea/vomiting + intestinal ileus (inflation, fluid levels) WITHOUT free air (ruling out perforation) = classic ACUTE PANCREATITIS. Alcohol is a major cause. Perforation shows FREE AIR. Cholecystitis is RUQ. The absent free gas is key to exclude perforation.",
+    kw:["Acute pancreatitis","Alcohol","Epigastric pain","Amylase","Lipase","Sentinel loop"],
+    nv:"Serum amylase >3x normal = pancreatitis | Lipase more specific | Ranson criteria for severity",
+    tip:"Pancreatitis causes: 'GET SMASHED' = Gallstones, Ethanol, Trauma, Steroids, Mumps, Autoimmune, Scorpion, Hyperlipidemia/Hyper-Ca, ERCP, Drugs! Alcohol + epigastric pain = pancreatitis! 🍺"
+  },
+  {
+    n:20, topic:"Hematology",
+    q:"Same patient (36yo female, pancytopenia, blast cells on smear). Which is appropriate to ESTABLISH the diagnosis?",
+    choices:["A. Detection of Serum B12, Folate","B. Detection of reticulocyte count","C. Bone marrow aspirate","D. Serum chemistries","E. Serum iron"],
+    ans:2,
+    exp:"To definitively DIAGNOSE acute leukemia (suspected from blast cells on smear + pancytopenia), bone marrow aspirate is essential. It determines: blast percentage (>20% = AML/ALL), cell morphology, immunophenotype (flow cytometry), cytogenetics. Peripheral smear shows blasts but bone marrow gives the full picture needed for classification and treatment.",
+    kw:["Bone marrow aspirate","Acute leukemia diagnosis","Blast percentage","Flow cytometry","Cytogenetics"],
+    nv:">20% blasts in bone marrow = AML or ALL | Normal blasts in marrow: <5%",
+    tip:"Suspected leukemia? Always BONE MARROW BIOPSY to confirm! The peripheral smear hints, the marrow CONFIRMS. Think: 'You see blasts in blood → GO TO THE SOURCE (marrow)!' 🦴"
+  },
+  {
+    n:21, topic:"Respiratory/Infectious Disease",
+    q:"Male, 30 years old, foot furuncle and carbuncle for 1 week, chills and high fever for 2 days. Productive cough with blood in phlegm. Both lungs with wet rales. WBC 25.0×10⁹/L, neutrophils 92%. Most likely diagnosis?",
+    choices:["A. Streptococcus pneumonia","B. Hematogenous Staphylococcal pneumonia","C. Anaerobic pneumonia","D. Legionella pneumonia","E. Viral pneumonia"],
+    ans:1,
+    exp:"KEY: Skin infection (furuncle/carbuncle = Staph aureus) → bacteremia → HEMATOGENOUS spread to lungs → Staphylococcal pneumonia. Features: bilateral multi-focal involvement, bloody sputum, high fever, severely elevated WBC with neutrophilia. This is NOT primary pneumonia — it's secondary from skin Staph infection seeding the lungs.",
+    kw:["Staphylococcal pneumonia","Hematogenous spread","Bacteremia","Furuncle","Carbuncle","Bilateral"],
+    nv:"WBC >25×10⁹/L with neutrophilia >90% = severe bacterial infection",
+    tip:"STAPH FURUNCLE → BLOOD → BILATERAL LUNG ABSCESSES. Think 'Skin bug goes SWIMMING in blood to BOTH lungs'. Staphylococcal pneumonia = multiple, bilateral, cavitating lesions! 🩺"
+  },
+  {
+    n:22, topic:"Respiratory",
+    q:"Woman, 34 years old, repeated dry cough for 1 year, aggravated by smelling irritants, no SOB or heart symptoms. Multiple chest X-rays normal. Antibiotics ineffective. Which check is most meaningful for diagnosis?",
+    choices:["A. Chest CT","B. Electrocardiogram","C. Airway reactive assay","D. Allergen test","E. Sputum check"],
+    ans:3,
+    exp:"Chronic cough triggered by irritants/odors with normal chest X-ray, no response to antibiotics, and no cardiac/structural pathology = BRONCHIAL ASTHMA (cough variant) or ALLERGIC airway disease. Allergen test identifies the specific triggers. Airway reactive assay (bronchial provocation) also useful. Both C and D are reasonable, but D (Allergen test) identified as correct in this context for specific trigger identification.",
+    kw:["Cough variant asthma","Allergen test","Bronchial hypersensitivity","Irritant cough","Atopy"],
+    nv:"Spirometry: FEV1/FVC <0.7 post-bronchodilator = obstructive | Methacholine challenge: PC20 <8 mg/mL = hyperreactive",
+    tip:"Chronic cough + triggered by smells + normal X-ray + no infection response = think ASTHMA/ALLERGY! Allergen testing identifies the CULPRIT. Remember: normal CXR + antibiotic failure = not bacterial! 🤧"
+  },
+  {
+    n:23, topic:"Neurology/Emergency",
+    q:"25-year-old known epileptic post-seizure 30 min ago, still confused. Medications unknown. BP 162/85, glucose 95 mg/dL. Most appropriate next step?",
+    choices:["A. Place patient in lateral decubitus position","B. Administer lorazepam","C. Administer phenytoin","D. Perform rapid sequence intubation","E. Look up records and administer his current regimen"],
+    ans:0,
+    exp:"The patient had a seizure 30 MINUTES AGO and is now POST-ICTAL (confused but not actively seizing). The key management of a post-ictal patient is AIRWAY PROTECTION — place in lateral (recovery) position to prevent aspiration. Lorazepam/phenytoin are for ACTIVE seizures. Glucose is normal. RSI is not needed unless airway compromised. Find out his meds AFTER securing safety.",
+    kw:["Post-ictal state","Recovery position","Lateral decubitus","Seizure management","Airway protection"],
+    nv:"Glucose normal 95 mg/dL (70-100 mg/dL) — hypoglycemia ruled out as cause",
+    tip:"POST-ictal ≠ ACTIVE seizure! If actively seizing = Lorazepam. If DONE seizing and confused = RECOVERY POSITION (lateral decubitus). Airways first! 🛡️"
+  },
+  {
+    n:24, topic:"Emergency/Toxicology",
+    q:"47-year-old found wandering, mumbling. BP 150/75, HR 110, Temp 38.1°C. Confused, dilated pupils, flushed face, dry mucous membranes and skin. Which toxic syndrome?",
+    choices:["A. Sympathomimetic syndrome","B. Anticholinergic syndrome","C. Cholinergic syndrome","D. Opioid syndrome","E. Ethanol syndrome"],
+    ans:1,
+    exp:"Classic ANTICHOLINERGIC toxidrome: 'Mad as a hatter, Blind as a bat, Dry as a bone, Red as a beet, Hot as hell' = confusion/hallucinations, mydriasis (dilated pupils), dry skin/mucous membranes, flushed, hyperthermia. Sympathomimetic ALSO has dilated pupils and tachycardia but has SWEATING (wet). Opioids = miosis (constricted pupils). Cholinergic = wet, SLUDGE.",
+    kw:["Anticholinergic toxidrome","Mydriasis","Dry skin","Flushed","Hyperthermia","Confusion"],
+    nv:null,
+    tip:"Anticholinergic = 'Hot, Dry, Blind, Red, Mad'. Vs Sympathomimetic = same BUT WET (sweating). Key difference: DRY = Anticholinergic. SWEATY = Sympathomimetic! 💊🔥"
+  },
+  {
+    n:25, topic:"Infectious Disease",
+    q:"Which of the following is NOT right about the treatment of infectious diseases?",
+    choices:["A. Treatment includes general, special, and symptomatic treatment","B. Special treatment is the most radical effective treatment","C. Comprehensive treatment including all three types should be given","D. Treatment promotes rehabilitation and controls source of infection","E. Quarantine and sterilize are not included in treatment principles"],
+    ans:4,
+    exp:"Quarantine and disinfection/sterilization ARE important principles in controlling infectious diseases — they limit spread and are considered part of comprehensive management principles. Therefore, stating they are 'NOT included' is INCORRECT. The other statements are all accurate: treatment has three components, special treatment (antiviral/antibiotic) is most targeted, and treatment controls source.",
+    kw:["Infectious disease treatment","Quarantine","Isolation","Special treatment","Source control"],
+    nv:null,
+    tip:"Infectious disease management = TREAT the patient + PREVENT the spread. Quarantine IS part of the plan — you can't separate treatment from infection control! 🏥"
+  },
+  {
+    n:26, topic:"Endocrinology",
+    q:"Which of the following is NOT a cause of ACTH-independent Cushing's syndrome?",
+    choices:["A. Glucocorticoid administration","B. Adrenal adenoma","C. Ectopic ACTH syndrome","D. Micronodular adrenal disease","E. Adrenal carcinoma"],
+    ans:2,
+    exp:"ACTH-INDEPENDENT Cushing's = adrenal source making cortisol without ACTH stimulation → suppresses pituitary ACTH. Causes: exogenous glucocorticoids (most common!), adrenal adenoma, adrenal carcinoma, micronodular adrenal hyperplasia. ECTOPIC ACTH syndrome is ACTH-DEPENDENT — tumors (small cell lung, carcinoid) produce ACTH which stimulates adrenals.",
+    kw:["Cushing syndrome","ACTH-independent","Adrenal adenoma","Ectopic ACTH","Cortisol","HPA axis"],
+    nv:"Normal cortisol: 8am 6-23 µg/dL | 24hr UFC >3x normal = Cushing's",
+    tip:"ACTH-INDEPENDENT = adrenal problem (makes cortisol by itself). ACTH-DEPENDENT = pituitary or ectopic tells adrenal to make cortisol. Ectopic ACTH = DEPENDENT (needs ACTH)! Think 'ACTH comes FROM somewhere = DEPENDENT' 🧠"
+  },
+  {
+    n:27, topic:"Infectious Disease/GI",
+    q:"Male, 67yo, diarrhea 15 times and vomiting 6 times, history of diabetes. Stool: rotted first then watery. No fever, no abdominal pain, no tenesmus. Skin elasticity reduced, sunken eyes. Fecal routine: no RBC/WBC. Most likely diagnosis?",
+    choices:["A. Bacterial dysentery","B. Food poisoning","C. Acute bacterial gastroenteritis","D. Cholera","E. Amoebic dysentery"],
+    ans:3,
+    exp:"Classic CHOLERA presentation: massive watery diarrhea ('rice-water stools'), severe dehydration (reduced skin turgor, sunken eyes), NO fever, NO blood/pus in stool, NO tenesmus. The progression from loose to profuse watery stool is typical. Bacterial dysentery = blood+pus + tenesmus + fever. Food poisoning = vomiting predominant, shorter course.",
+    kw:["Cholera","Rice-water stool","Massive dehydration","Vibrio cholerae","No fever","No blood"],
+    nv:"Cholera can cause fluid loss of 10-20 L/day | Severe dehydration = >10% body weight loss",
+    tip:"CHOLERA = 'Like a FAUCET turned on' = MASSIVE watery diarrhea, NO blood, NO fever, profound dehydration. Key: rice-water stools + NO inflammatory features = CHOLERA! 💧"
+  },
+  {
+    n:28, topic:"Respiratory",
+    q:"The most important indicator of lung function in the diagnosis of COPD is?",
+    choices:["A. FEV1/FVC","B. DLCO","C. FEV1","D. RV","E. TLC"],
+    ans:0,
+    exp:"GOLD criteria for COPD diagnosis: post-bronchodilator FEV1/FVC <0.70 (70%) is the DIAGNOSTIC criterion. This confirms airflow obstruction. FEV1 is used to GRADE severity once diagnosed. DLCO is reduced in emphysema (indicating parenchymal destruction) but is not the diagnostic criterion. FEV1/FVC is the single most important diagnostic parameter.",
+    kw:["COPD","FEV1/FVC","Airflow obstruction","GOLD criteria","Spirometry","Post-bronchodilator"],
+    nv:"FEV1/FVC <0.70 = COPD (post-bronchodilator) | GOLD 1-4 based on FEV1% predicted",
+    tip:"COPD diagnosis = FEV1/FVC <0.70. Remember: 'SEVENTY is the line!' After bronchodilator — if still <70% ratio = COPD confirmed. FEV1 then grades severity (mild/moderate/severe/very severe)! 🫁"
+  },
+  {
+    n:29, topic:"Psychiatry",
+    q:"Which of the following is the WRONG description of Verbigeration?",
+    choices:["A. Present when speech is reduced to senseless repetition of sounds, words, or phrases","B. It is characteristic of mania","C. Can occur with severe expressive aphasia and occasionally in schizophrenia","D. When extreme, the disorder is called word salad","E. It is a disorder of form of thinking"],
+    ans:1,
+    exp:"Verbigeration = stereotyped, senseless repetition of words/phrases — it's characteristic of SCHIZOPHRENIA and severe aphasia, NOT mania. Mania is characterised by PRESSURED SPEECH (rapid, difficult to interrupt) and FLIGHT OF IDEAS. When verbigeration is extreme it becomes 'word salad' (completely incoherent speech). It IS a formal thought disorder.",
+    kw:["Verbigeration","Formal thought disorder","Schizophrenia","Word salad","Pressured speech","Mania"],
+    nv:null,
+    tip:"Verbigeration = Schizophrenia. Pressured speech = Mania. Don't mix them up! Mania = FAST and PRESSURED. Schizophrenia = REPETITIVE and SENSELESS. 🧠"
+  },
+  {
+    n:30, topic:"Neurology/Psychiatry",
+    q:"Which of the following is NOT a feature of SUBCORTICAL dementia?",
+    choices:["A. Poor calculation","B. Apathy","C. Depression","D. Slowdown of cognition","E. Dystaxia"],
+    ans:0,
+    exp:"SUBCORTICAL dementia (e.g., Huntington's, Parkinson's, HIV dementia): features = apathy, depression, psychomotor slowing (slowdown of cognition), dysarthria, gait problems (dystaxia). POOR CALCULATION is a CORTICAL feature (parietal lobe dysfunction) — seen in Alzheimer's and other cortical dementias. Subcortical = 'the engine slows down' but cortical functions preserved longer.",
+    kw:["Subcortical dementia","Cortical dementia","Apathy","Bradyphrenia","Calculation","Alzheimer's"],
+    nv:null,
+    tip:"CORTICAL dementia (Alzheimer's) = CORTICAL deficits: aphasia, apraxia, agnosia, amnesia, acalculia. SUBCORTICAL = SLOWING + mood + movement. 'SUBcortical = SUBdued and SLOW' 🧠"
+  },
+  {
+    n:31, topic:"Neurology",
+    q:"A 55-year-old man with sudden left-sided weakness, confusion, headache. CT shows acute hemorrhage in right putamen. Most likely cause?",
+    choices:["A. Head trauma","B. Cerebral aneurysm","C. Cardioembolic hemorrhage stroke","D. Hypertension","E. Diabetes"],
+    ans:3,
+    exp:"Hypertensive hemorrhage classically occurs in the PUTAMEN (most common), thalamus, pons, and cerebellum. Chronically elevated BP causes lipohyalinosis of small penetrating arteries (Charcot-Bouchard microaneurysms) which rupture. Sudden onset focal deficit + basal ganglia/deep structure hemorrhage = HYPERTENSION until proven otherwise. Aneurysmal bleeds favor the subarachnoid space.",
+    kw:["Hypertensive hemorrhage","Putamen","Charcot-Bouchard","Intracerebral hemorrhage","Deep structures"],
+    nv:"Most common sites for hypertensive ICH: Putamen>Thalamus>Pons>Cerebellum",
+    tip:"Putamen bleed = HYPERTENSION almost always! Remember location: 'PUT your HIGH BLOOD PRESSURE here' = Putamen! Subarachnoid = aneurysm. Deep structures = HTN! 🫀🧠"
+  },
+  {
+    n:32, topic:"Rheumatology",
+    q:"65-year-old man with 10-year RA, joint pain in MCP, PIP joints, wrists. Hard, non-mobile subcutaneous nodule at elbow along extensor tendon. What is this nodule most probably?",
+    choices:["A. Lymph node","B. Rheumatoid nodule","C. Lipoma","D. Gouty deposition (tophus)","E. Scabbard cyst"],
+    ans:1,
+    exp:"Rheumatoid nodules are firm, non-tender subcutaneous nodules found in 20-30% of RA patients, typically over pressure points (olecranon, extensor surfaces). They are pathognomonic for RA when combined with RA history. Histologically they show fibrinoid necrosis surrounded by palisading macrophages. Gout tophi are at different locations (Achilles, ear pinnae) and associated with high uric acid.",
+    kw:["Rheumatoid nodule","RA","Olecranon","Extensor surface","Fibrinoid necrosis","Subcutaneous"],
+    nv:"RF positive in 70-80% RA | Anti-CCP more specific for RA",
+    tip:"Rheumatoid nodule = firm, at pressure points (elbow!), in RA patient = OBVIOUS! Gout tophi = chalky white, at ear/Achilles. In RA patient with elbow lump = RHEUMATOID NODULE! 🦴"
+  },
+  {
+    n:33, topic:"Infectious Disease/Respiratory",
+    q:"Female, 26 years old, poultry breeder, 3 days ago presented fever, cough, white sputum, chest tightness, shortness of breath. Symptoms continue to aggravate. Most likely diagnosis?",
+    choices:["A. Influenza","B. SARS","C. Bacterial pneumonia","D. Human infection with H7N9 avian influenza","E. Mycoplasma pneumonia"],
+    ans:3,
+    exp:"KEY: POULTRY BREEDER + severe rapidly progressive pneumonia = H7N9 Avian Influenza until proven otherwise. Epidemiological link to live poultry is the critical clue. H7N9 causes severe pneumonia with rapid deterioration. SARS is person-to-person. Bacterial pneumonia wouldn't specifically link to poultry. Regular influenza doesn't cause this rapid severe deterioration.",
+    kw:["H7N9","Avian influenza","Poultry exposure","Zoonosis","Epidemiological link","Novel influenza"],
+    nv:null,
+    tip:"POULTRY + PNEUMONIA = AVIAN INFLUENZA (H5N1 or H7N9)! This is the epidemiological clue. Always ask about animal exposure in respiratory illness! 🐔🤒"
+  },
+  {
+    n:34, topic:"Neurology",
+    q:"Mrs. Jones has lurching, unsteady wide-based gait, falls to one side, positive Romberg's sign. This gait is associated with cerebellar disease or associated tracts. It is _______.",
+    choices:["A. Cerebellar ataxia","B. Stiff gait","C. Steppage gait","D. Sensory ataxia","E. Scissors gait"],
+    ans:0,
+    exp:"Cerebellar ataxia = wide-based, lurching, unsteady gait due to cerebellar dysfunction. The patient veers/falls to the affected side. Romberg's sign: if falling WORSE with eyes closed = sensory ataxia (proprioceptive loss). If equally unsteady WITH eyes open = cerebellar ataxia. The question says associated with cerebellar disease = cerebellar ataxia regardless of Romberg.",
+    kw:["Cerebellar ataxia","Wide-based gait","Romberg sign","Cerebellar","Dysmetria","Nystagmus"],
+    nv:"Romberg test: Stand with feet together. Eyes open OK, eyes closed FALLS = positive = sensory ataxia",
+    tip:"Cerebellar ataxia = DRUNK-like walk. Wide base, lurching, can't walk straight. Sensory ataxia = falls with eyes CLOSED. Cerebellar = falls with eyes OPEN or CLOSED! 🧠🚶"
+  },
+  {
+    n:35, topic:"Gastroenterology",
+    q:"Male, 40 years old, duodenal ulcer for 8 years, recurrent despite PPI treatment. Most likely cause of recurrent ulcer disease?",
+    choices:["A. Smoking","B. Drinking","C. Improper diet","D. Omeprazole is not effective","E. Hp infection"],
+    ans:4,
+    exp:"H. pylori (Hp) infection is the most common cause of RECURRENT peptic ulcer disease. Even if PPIs heal the ulcer, without H. pylori eradication, recurrence rates are >70% within 1 year. Testing and treating H. pylori is essential for ulcer disease management. Smoking and alcohol are contributing factors but NOT the most common cause of recurrence.",
+    kw:["H. pylori","Peptic ulcer recurrence","Eradication","Triple therapy","Recurrent ulcer"],
+    nv:"Hp eradication rates: Triple therapy ~80-85% | Test with UBT 4 weeks post-treatment",
+    tip:"H. pylori = the RECURRENCE villain! Even if healed by PPIs, without KILLING H. pylori, ulcer COMES BACK. Eradicate = cure! Remember: 'Kill the bug, cure the ulcer!' 🦠💊"
+  },
+  {
+    n:36, topic:"Psychiatry",
+    q:"In a thunderstorm, a veteran felt like he were under heavy gunfire and tried to find shelter. This kind of symptom is called:",
+    choices:["A. Intrusive imagery","B. Flashbacks","C. Recurrent distressing dreams","D. Persistent anxiety","E. Phobia"],
+    ans:1,
+    exp:"FLASHBACKS = re-experiencing a traumatic event as if it is happening NOW, triggered by environmental cues (here: thunderstorm sounds like gunfire). This is a core symptom of PTSD. The veteran is not just remembering — he's experiencing it as REAL and CURRENT. Intrusive imagery = unwanted images without the full re-experiencing. Flashbacks = complete sensory re-experiencing.",
+    kw:["PTSD","Flashback","Re-experiencing","Trauma","Trigger","Hyperarousal"],
+    nv:null,
+    tip:"FLASHBACK = 'Living the trauma AGAIN right now!' Triggered by sensory cues. Vs intrusive imagery = just unwanted memory images. PTSD symptoms: Re-experiencing, Avoidance, Negative cognition, Hyperarousal = RANE! 🎖️"
+  },
+  {
+    n:37, topic:"Gastroenterology",
+    q:"Male, 35 years old, intermittent upper abdominal pain for 6 years, pain occurs BEFORE meals, relieved AFTER eating, with acid reflux, heartburn. Tender below xiphoid. First clinical diagnosis consideration?",
+    choices:["A. Chronic superficial gastritis","B. Chronic atrophic gastritis","C. Gastric ulcer","D. Duodenal ulcer","E. Reflux esophagitis"],
+    ans:3,
+    exp:"DUODENAL ulcer pattern: pain BEFORE meals (fasting/hunger pain), RELIEVED by food (food acts as a buffer), nocturnal pain, epigastric/xiphoid tenderness. GASTRIC ulcer: pain 30-60 min AFTER eating (food stimulates acid). The hunger-eating-relief pattern is the classic duodenal ulcer presentation.",
+    kw:["Duodenal ulcer","Hunger pain","Relieved by food","Epigastric","H. pylori","Nocturnal pain"],
+    nv:null,
+    tip:"DUODENAL ulcer: 'Empty stomach hurts, food helps' — fasting pain, relieved by eating. GASTRIC ulcer: 'Food hurts' — pain AFTER eating. Easy: Duodenal = Dinner DELAYS pain (eats, gets relief)! 🍽️"
+  },
+  {
+    n:38, topic:"Respiratory/Infectious Disease",
+    q:"15-year-old male, sore throat and weakness for 2 weeks, obvious irritating dry cough. No rales on exam. Chest X-ray: interstitial changes in both lungs. Most common pathogen?",
+    choices:["A. Streptococcus pneumoniae","B. Staphylococcus","C. Klebsiella","D. Mycoplasma pneumoniae","E. Pulmonary aspergillosis"],
+    ans:3,
+    exp:"ATYPICAL pneumonia pattern: young patient + dry cough + mild systemic symptoms + INTERSTITIAL changes on CXR + physical exam does NOT match severity of X-ray (radiologic-clinical dissociation) = MYCOPLASMA pneumoniae. Called 'walking pneumonia' — patient appears relatively well. Strep pneumo = lobar consolidation + productive cough + sick patient.",
+    kw:["Mycoplasma pneumoniae","Atypical pneumonia","Walking pneumonia","Interstitial infiltrates","Young patient","Dry cough"],
+    nv:"CXR interstitial pattern + mild symptoms = atypical organism | Treat with macrolides",
+    tip:"Mycoplasma = 'Walking pneumonia' — sick on X-ray, walks around! TEENAGER + DRY cough + interstitial CXR = MYCOPLASMA! Treat with macrolides (azithromycin), NOT penicillin! 🏃"
+  },
+  {
+    n:39, topic:"Respiratory",
+    q:"Male, 19 years old, cough and sputum 15 days, chest pain and fever 5 days. Temp 38.3°C, trachea slightly deviated LEFT. RIGHT lower lung percussion dullness, low breath sounds. WBC 7.6×10⁹/L, neutrophils 76%. Most likely diagnosis?",
+    choices:["A. Right pleural effusion","B. Right pneumonia","C. Bronchial asthma","D. Right pneumothorax","E. Right lung abscess"],
+    ans:0,
+    exp:"Trachea deviated AWAY from the lesion + DULLNESS on percussion + decreased breath sounds on RIGHT = PLEURAL EFFUSION (fluid pushes trachea away). In pneumothorax, trachea deviates away but percussion is HYPERRESONANT. In pneumonia, trachea deviation is uncommon. WBC elevation with predominant neutrophils suggests infectious cause of the effusion (parapneumonic).",
+    kw:["Pleural effusion","Tracheal deviation","Percussion dullness","Decreased breath sounds","Parapneumonic"],
+    nv:"Tracheal deviation AWAY from lesion = effusion or mass. TOWARD lesion = atelectasis, collapse",
+    tip:"Dullness + deviation AWAY = EFFUSION (fluid pushes). Hyperresonance + deviation AWAY = PNEUMOTHORAX (air pushes). Dullness + deviation TOWARD = COLLAPSE/ATELECTASIS (pulls). 🫁"
+  },
+  {
+    n:40, topic:"Infectious Disease",
+    q:"Which has the highest positive rate of Salmonella typhi (typhoid) detection?",
+    choices:["A. Blood culture","B. Bone marrow culture","C. Fecal culture","D. Urine culture","E. Sputum culture"],
+    ans:1,
+    exp:"BONE MARROW CULTURE has the HIGHEST sensitivity (85-90%) for detecting Salmonella typhi, even in patients who have received antibiotics. Blood culture is positive in 60-80% in first week. Stool culture peaks in weeks 3-4. Bone marrow is less affected by prior antibiotic use because organisms are phagocytosed and protected. It's the gold standard when other cultures are negative.",
+    kw:["Typhoid","Salmonella typhi","Bone marrow culture","Sensitivity","Gold standard","Widal test"],
+    nv:"Culture positivity by week: Week 1 = Blood (best). Week 3-4 = Stool/Urine | Bone marrow = highest overall",
+    tip:"BONE MARROW = BEST for typhoid! Why? Salmonella hides inside macrophages in marrow = protected from antibiotics. Blood culture good FIRST week, stool LATER. 🦴🧫"
+  },
+  {
+    n:41, topic:"Nephrology",
+    q:"30-year-old woman, low back pain and urgent urination. BP 160/100, urine protein(+), RBC 8-20/HP, WBC 15-20/HP, IVP shows right kidney small with pelvic dilatation. Most possible diagnosis?",
+    choices:["A. Chronic glomerulonephritis","B. Chronic pyelonephritis","C. Renal tuberculosis","D. Polycystic kidney disease","E. Hydronephrosis"],
+    ans:1,
+    exp:"CHRONIC PYELONEPHRITIS: Recurrent UTI symptoms + hypertension + asymmetric small kidney on imaging + pelvicalyceal dilatation + pyuria (WBC in urine) + hematuria + proteinuria. The ASYMMETRIC renal scarring with pelvic dilatation (reflecting repeated infections causing scarring) is classic for chronic pyelonephritis. Glomerulonephritis = bilateral equal involvement.",
+    kw:["Chronic pyelonephritis","Asymmetric","Small kidney","Pelvic dilatation","Recurrent UTI","Pyuria"],
+    nv:"WBC >5/HP in urine = pyuria | Urine culture >10⁵ CFU/mL = significant bacteriuria",
+    tip:"Chronic pyelonephritis = ASYMMETRIC small kidney (scarring from repeated infections). Glomerulonephritis = SYMMETRIC kidneys. Remember: INFECTION SCARS = ASYMMETRIC KIDNEYS! 🦠🫘"
+  },
+  {
+    n:42, topic:"Nephrology",
+    q:"65-year-old female, edema and oliguria for 1 week. BP 168/102. Creatinine 169→950µmol/L in 1 month. Urine protein(+++), RBC(+++). Normal complement C3. Kidneys normal size on ultrasound. Most possible diagnosis?",
+    choices:["A. Acute pyelonephritis","B. Rapidly progressive glomerulonephritis","C. Chronic glomerulonephritis","D. Acute glomerulonephritis","E. Acute interstitial nephritis"],
+    ans:1,
+    exp:"RPGN: Dramatic rise in creatinine over weeks (169→950 in 1 month) + heavy proteinuria + hematuria + hypertension + normal kidney size (rules out chronic atrophy). Normal complement makes Type III (ANCA-associated) or Type I (anti-GBM) more likely. RPGN = crescentic GN on biopsy — a nephrological emergency! Without treatment → ESRD in weeks.",
+    kw:["RPGN","Rapidly progressive GN","Crescentic GN","Creatinine","Anti-GBM","ANCA","Nephritic syndrome"],
+    nv:"Creatinine: Normal 53-106 µmol/L (female) | Oliguria: <400 mL/day | 950 = severe AKI",
+    tip:"RPGN = RACE to dialysis! Creatinine doubles/triples in WEEKS. Crescents on biopsy. TREAT IMMEDIATELY with steroids ± cyclophosphamide. 'Rapidly Progressive = Rapid Treatment needed!' 🏃💊"
+  },
+  {
+    n:43, topic:"Gastroenterology/Hematology",
+    q:"The main cause of pancytopenia in patients with cirrhosis is:",
+    choices:["A. Nutrient absorption disorder","B. Low hematopoietic function of bone marrow","C. Hypersplenism","D. Upper gastrointestinal bleeding","E. Hepatorenal syndrome"],
+    ans:2,
+    exp:"HYPERSPLENISM is the primary cause of pancytopenia in cirrhosis. Portal hypertension → congestive splenomegaly → spleen traps and destroys blood cells (all three lines: RBC, WBC, platelets). This explains the low counts across all cell lines. The spleen acts as a 'cell vacuum'. Bone marrow in cirrhosis is often normal or even hyperplastic in compensation.",
+    kw:["Hypersplenism","Splenomegaly","Portal hypertension","Pancytopenia","Cirrhosis","Thrombocytopenia"],
+    nv:"Hypersplenism: Spleen >400g or splenomegaly + peripheral cytopenia + normal/hyperplastic marrow",
+    tip:"Cirrhosis → Portal HTN → Big Spleen → EATS blood cells = HYPERSPLENISM → PANCYTOPENIA. Think 'The spleen is HUNGRY!' 🫀🫘"
+  },
+  {
+    n:44, topic:"Endocrinology/Emergency",
+    q:"21-year-old diabetic college student, sleepy. Not refilled medication in 1 week. BP 95/61, HR 132, Temp 99.7°F, RR 20. Glucose 530 mg/dL. Expected ABG and urinalysis?",
+    choices:["A. pH 7.38, anion gap 5, normal UA","B. pH 7.57, anion gap 21, glucose+leukocytes in urine","C. pH 7.47, anion gap 12, glucose+ketones in urine","D. pH 7.26, anion gap 12, glucose+ketones in urine","E. pH 7.26, anion gap 21, glucose+ketones in urine"],
+    ans:4,
+    exp:"DKA: young T1DM + no medication + very high glucose (530) + tachycardia + hypotension = DKA. Expected: pH <7.3 (metabolic acidosis), HIGH anion gap (>12, from ketoacids = beta-hydroxybutyrate, acetoacetate), glucosuria AND ketonuria. Answer E: pH 7.26 (acidosis) + AG 21 (high gap) + glucose+ketones in urine = DKA.",
+    kw:["DKA","Diabetic ketoacidosis","High anion gap","Metabolic acidosis","Ketonuria","T1DM"],
+    nv:"Anion gap = Na - (Cl + HCO3) | Normal AG: 8-12 | DKA: AG >20 | pH <7.3 in DKA",
+    tip:"DKA = 'GLUK + KETO + ACID': High glucose + Ketones (smell acetone breath!) + Metabolic acidosis (high AG). Vs HHS (type 2): very high glucose, NO ketones, NO acidosis! 🍎"
+  },
+  {
+    n:45, topic:"Psychiatry",
+    q:"One month after her mother's death from heart failure, a 25-year-old woman is still very sad and tearful with difficulty concentrating, insomnia, and 3 pounds weight loss. Most likely diagnosis?",
+    choices:["A. Major depression","B. Dysthymia","C. Post-traumatic stress disorder","D. Adjustment disorder","E. Uncomplicated bereavement"],
+    ans:4,
+    exp:"UNCOMPLICATED BEREAVEMENT (normal grief): Symptoms of depression occurring after a significant loss are NORMAL for a period of time. One month is still within normal grief trajectory. Symptoms (sadness, insomnia, concentration issues, weight loss) are EXPECTED after losing a parent. Major depression diagnosis in grief requires: symptoms >2 months, psychotic features, marked functional impairment, suicidal ideation, or morbid guilt.",
+    kw:["Bereavement","Normal grief","Major depression","Time course","DSM-5","Loss"],
+    nv:"Normal grief: Symptoms expected, improves with time. MDD in grief: >2 months, severe impairment, guilt, suicidality",
+    tip:"1 month after death = NORMAL GRIEF, not MDD yet! Grief = normal sadness after loss. MDD = prolonged (>2 months), severe, with guilt/suicidal thoughts. Don't pathologize normal grief! 💔"
+  },
+  {
+    n:46, topic:"Neurology",
+    q:"42-year-old female, tremor starting mildly 12 years ago, affects hands>head, occurs with movement, improves with alcohol, mother had same disorder. Normal neuro exam except tremor. Movement disorder?",
+    choices:["A. Cerebellar tremor","B. Psychogenic tremor","C. Parkinsonian tremor","D. Alcoholic withdrawal tremor","E. Essential tremor"],
+    ans:4,
+    exp:"ESSENTIAL TREMOR: action/kinetic tremor (occurs with movement, not at rest), family history (autosomal dominant), improves with ALCOHOL (classic!), affects hands and head. Parkinsonian tremor = REST tremor, 4-6 Hz, pill-rolling, improves with movement. Cerebellar = intention tremor (worsens approaching target). Essential tremor is the most common movement disorder.",
+    kw:["Essential tremor","Action tremor","Kinetic tremor","Alcohol improves","Autosomal dominant","Propranolol"],
+    nv:"Essential tremor: 4-12 Hz, bilateral, action/postural | Parkinson's: 4-6 Hz, unilateral, rest",
+    tip:"Essential tremor = 'E.T. PHONES HOME with ALCOHOL': improves with alcohol, worse with ACTION, family history. Parkinson's = rest tremor, pill-rolling, improves with movement, + other features (rigidity, bradykinesia)! 🤝"
+  },
+  {
+    n:47, topic:"Nephrology",
+    q:"42-year-old male with 10-year IgA nephritis. Recurrent vomiting, oliguria 1 week. BP 170/115, lung rales, jugular engorgement. K+ 6.8 mmol/L, creatinine 711 µmol/L. Most suitable treatment?",
+    choices:["A. Sodium bicarbonate","B. Diuretics","C. Hemodialysis","D. Intravenous cedilanid","E. Anti-hypertensive medicine"],
+    ans:2,
+    exp:"This patient has ACUTE-on-CHRONIC kidney injury with: dangerous hyperkalemia (6.8 mmol/L), severe uremia (Cr 711), fluid overload (pulmonary edema, JVD), and hypertension. These are ABSOLUTE INDICATIONS for HEMODIALYSIS: hyperkalemia refractory to medical treatment, uremia symptoms, fluid overload. Diuretics won't work in severe CKD. Sodium bicarb/cedilanid are temporizing measures only.",
+    kw:["Hemodialysis","Hyperkalemia","Uremia","Fluid overload","ESRD","Renal replacement therapy"],
+    nv:"K+ normal: 3.5-5.0 | K+ >6.5 + ECG changes = EMERGENCY | Cr >500 µmol/L = severe AKI",
+    tip:"AEIOU for dialysis indications: Acidosis severe, Electrolytes (K+ >6.5), Intoxication, Overload (fluid), Uremia symptoms. ALL FIVE present here = DIALYZE NOW! 🏥"
+  },
+  {
+    n:48, topic:"Neurology",
+    q:"39-year-old man with intermittent slurred speech and difficulty swallowing, worse at end of day. Voice becomes slurred after prolonged use. Which mechanism of medication would most likely help?",
+    choices:["A. Inhibition of voltage gates channels","B. Muscarinic stimulation","C. Blocking of nicotinic receptors","D. Inhibition of acetylcholine reuptake","E. Inhibition of acetylcholinesterase"],
+    ans:4,
+    exp:"This is MYASTHENIA GRAVIS: fatigable weakness (worse at end of day/with activity), bulbar symptoms (dysarthria, dysphagia). Treatment = anticholinesterase inhibitors (Pyridostigmine). These INHIBIT ACETYLCHOLINESTERASE → more ACh stays in the neuromuscular junction → better muscle activation in a condition where ACh receptors are destroyed by autoantibodies. Blocking nicotinic receptors would WORSEN MG.",
+    kw:["Myasthenia gravis","Acetylcholinesterase inhibitor","Pyridostigmine","Fatigable weakness","Neuromuscular junction","Anti-AChR antibody"],
+    nv:"Edrophonium (Tensilon) test: Short-acting AChE inhibitor → dramatic improvement = MG diagnosis",
+    tip:"Myasthenia Gravis = 'My strength GRAVES(ly) decreases with use'. Treat by KEEPING ACh around (inhibit the enzyme that breaks it down). Worse at end of day = fatigability = MG! 💪"
+  },
+  {
+    n:49, topic:"Emergency Medicine/Infectious Disease",
+    q:"19-year-old student with headache, sore throat, myalgias, rash (12h). BP 95/60, HR 132, Temp 103.9°F, SpO2 98%. Confused, neck stiffness, petechial/purpuric rash, delayed cap refill. Emergency priority?",
+    choices:["A. Collect two blood cultures prior to antibiotics","B. Call patient's parents immediately","C. Call roommate for more information","D. Begin fluid resuscitation, IV antibiotics, and lumbar puncture","E. Give acetaminophen to see if headache/fever resolve"],
+    ans:3,
+    exp:"MENINGOCOCCAL MENINGITIS/SEPSIS: Purpuric rash + neck stiffness + shock (BP 95/60, HR 132) + confusion = IMMEDIATE EMERGENCY. Priority: SIMULTANEOUS fluids + IV antibiotics + LP. Do NOT delay antibiotics for cultures when patient is unstable. The purpuric rash = meningococcemia = can die in hours. Treat NOW, get cultures when possible but don't delay treatment.",
+    kw:["Meningococcal meningitis","Purpuric rash","Septic shock","Neisseria meningitidis","LP","Ceftriaxone"],
+    nv:"Meningitis CSF: protein >45 mg/dL, glucose <45 mg/dL, WBC >5 cells/µL (mostly PMN in bacterial)",
+    tip:"Purpuric rash + meningism + SHOCK = MENINGOCOCCAL EMERGENCY! Remember: 'In meningococcemia, every MINUTE counts — give ANTIBIOTICS FAST!' Ceftriaxone NOW! 🚨"
+  },
+  {
+    n:50, topic:"Infectious Disease",
+    q:"Which of the following is the MAIN measure for comprehensive prevention of epidemic encephalitis B (Japanese encephalitis)?",
+    choices:["A. Control and isolation of patients","B. Manage infection sources such as pigs","C. Anti-mosquito","D. Vaccination","E. Anti-mosquito and vaccination"],
+    ans:4,
+    exp:"Japanese encephalitis (JE) transmission: Pigs/birds (reservoir) → Culex mosquitoes → Humans. The MOST EFFECTIVE COMPREHENSIVE prevention combines: (1) Vaccination (most effective individual protection) AND (2) Mosquito control (breaks transmission). Together these address both the vector and host immunity. Isolating patients has no effect (humans are dead-end hosts, not infective to mosquitoes efficiently).",
+    kw:["Japanese encephalitis","Culex mosquito","Pig reservoir","Vaccination","Vector control","JE vaccine"],
+    nv:null,
+    tip:"JE prevention = DOUBLE PUNCH: VACCINE + MOSQUITO control! Pigs are the amplifying host. Vaccinate children + control mosquitoes = comprehensive prevention! 🦟💉"
+  },
+  {
+    n:51, topic:"Cardiology",
+    q:"80-year-old man with dizziness and fatigue for months. History of HTN and DM. ECG shows alternating fast and slow rhythms. Most likely diagnosis?",
+    choices:["A. Ventricular tachycardia","B. Atrial flutter","C. Sick sinus syndrome","D. Second degree AV block","E. Third degree AV block"],
+    ans:2,
+    exp:"SICK SINUS SYNDROME (SSS): Elderly patient + dizziness/fatigue (from intermittent bradycardia) + ECG showing ALTERNATING bradycardia and tachycardia (tachy-brady syndrome) = SSS. The sinus node fails to maintain regular rhythm — periods of sinus arrest or bradycardia alternating with tachyarrhythmias (often AF). Common in elderly with HTN/DM.",
+    kw:["Sick sinus syndrome","Tachy-brady","Sinus node dysfunction","Pacemaker","Bradycardia","SSS"],
+    nv:"Normal sinus rate: 60-100 bpm | Sinus bradycardia: <60 bpm | Sick sinus: variable",
+    tip:"Sick Sinus Syndrome = the sinus node is UNRELIABLE — sometimes too FAST, sometimes too SLOW. Elderly + dizziness + tachy-brady on ECG = SSS. Treatment: PACEMAKER! ⚡"
+  },
+  {
+    n:52, topic:"Infectious Disease",
+    q:"Which of the following choices is the WHOLE viral particle of HBV?",
+    choices:["A. Small spherical particle","B. Dane particle","C. Filamentous particle","D. Tubular particle","E. Nuclear particle"],
+    ans:1,
+    exp:"HBV has THREE types of particles in blood: (1) DANE PARTICLE = complete, infectious viral particle (42nm) containing HBsAg coat + HBcAg core + viral DNA + HBV polymerase. (2) Small spherical particles (22nm) = just HBsAg (excess envelope, non-infectious, very abundant). (3) Filamentous particles = HBsAg tubules. Only Dane particles are complete virions capable of infection.",
+    kw:["Dane particle","HBV","HBsAg","Complete virion","HBcAg","Hepatitis B"],
+    nv:"HBsAg: surface antigen | HBeAg: indicates active replication | Anti-HBs: immunity",
+    tip:"DANE = the real deal! 'DANE = Dangerous Active Notable (infectious) Entity'. Small spheres = just excess surface antigen protein, NOT infectious. Only Danes can infect! 🦠"
+  },
+  {
+    n:53, topic:"Endocrinology/Emergency",
+    q:"52-year-old woman with altered mental status, HTN+DM, not taking meds for 5 days. BP 168/91, HR 125, Temp 99.8°F, glucose 900 mg/dL. Glucosuria but NO KETONES. Most appropriate next step?",
+    choices:["A. Administer IV fluids and insulin","B. Obtain head CT scan","C. Obtain ECG","D. Obtain chest radiograph and urine culture","E. Administer broad coverage antibiotics"],
+    ans:0,
+    exp:"HHS (Hyperglycemic Hyperosmolar State): Type 2 DM + EXTREMELY high glucose (900) + NO KETONES (unlike DKA) + altered mental status = HHS. The most critical step is IV FLUID RESUSCITATION (massive fluid deficit 8-10L) followed by insulin. Fluids FIRST because severe dehydration is the primary issue. IV fluids + insulin = immediate treatment.",
+    kw:["HHS","Hyperosmolar hyperglycemic state","Type 2 DM","No ketones","IV fluids","Insulin"],
+    nv:"HHS: Glucose >600 mg/dL, Osmolality >320, No ketones, pH normal | DKA: Glucose <600 (usually), ketones, acidosis",
+    tip:"HHS vs DKA: Both have HIGH glucose, but HHS = NO KETONES (Type 2 DM) and DKA = KETONES (Type 1). Treatment for both: FLUIDS first, then insulin! 💧💉"
+  },
+  {
+    n:54, topic:"Endocrinology",
+    q:"32-year-old white female, tired for 6 months, hair thinning, puffy face, vague aches, always cold, can't concentrate, eating more but tired, gained 30 pounds (truncal), thin arms/legs. Normal vitals. Working diagnosis?",
+    choices:["A. Hypothyroidism","B. Hyperparathyroidism","C. Diabetes mellitus","D. Kidney disease","E. Cushing Disease"],
+    ans:0,
+    exp:"Classic HYPOTHYROIDISM: fatigue, cold intolerance, weight gain, hair loss/thinning, puffy face (myxedema), cognitive slowing, constipation, bradycardia. The TRUNCAL obesity with thin extremities could suggest Cushing's, but Cushing's has moon face, purple striae, hypertension, and hyperglycemia. Here the dominant features (cold, hair loss, fatigue, puffiness) = HYPOTHYROID.",
+    kw:["Hypothyroidism","Cold intolerance","Weight gain","Myxedema","TSH","Hair thinning","Fatigue"],
+    nv:"TSH: 0.4-4.0 mIU/L | High TSH = hypothyroid | Low T4 = hypothyroid | Treat with levothyroxine",
+    tip:"Hypothyroid = EVERYTHING SLOWS DOWN: slow metabolism (weight gain), slow heart, slow brain, slow gut. Remember 'COLD and SLOW': Cold intolerant + Slow everything = HYPOTHYROID! 🥶"
+  },
+  {
+    n:55, topic:"Nephrology/Pharmacology",
+    q:"Which agent is used to redistribute extracellular K+ INTO cells (for hyperkalemia)?",
+    choices:["A. Insulin","B. Calcium gluconate (10%)","C. Furosemide","D. Sodium bicarbonate","E. Hypertonic sodium chloride"],
+    ans:0,
+    exp:"INSULIN (with glucose to prevent hypoglycemia) drives K+ INTO cells via the Na-K-ATPase pump → rapidly lowers serum K+ within 30-60 min. This is REDISTRIBUTION (not elimination). Calcium gluconate STABILIZES the myocardium (doesn't change K+ level). Furosemide/Kayexalate ELIMINATES K+ (removes from body). Sodium bicarb can also shift K+ in with alkalosis.",
+    kw:["Hyperkalemia","Insulin","Potassium redistribution","Na-K-ATPase","Calcium gluconate","Furosemide"],
+    nv:"K+ normal: 3.5-5.0 | Hyperkalemia treatment: C-BIG-K = Calcium, Bicarb, Insulin+Glucose, Kayexalate",
+    tip:"Hyperkalemia treatment order: 'C-BIG-K': Calcium (stabilize heart), Bicarb, Insulin+Glucose (shift in), give Kayexalate (remove). INSULIN shifts K+ INTO cells! 💉"
+  },
+  {
+    n:56, topic:"Gastroenterology",
+    q:"Female, 35 years old, recurrent mucous pus and blood for 3 years. Recurrence with abdominal pain, tenesmus, low fever. Mild anemia, left lower abdominal tenderness. Stool: many pus+RBC cells. Bacterial culture NEGATIVE x3. ESR 30mm/h. Most likely diagnosis?",
+    choices:["A. Crohn disease","B. Ulcerative colitis","C. Amoebic dysentery","D. Bacillary dysentery","E. Intestinal tuberculosis"],
+    ans:1,
+    exp:"ULCERATIVE COLITIS: Chronic RECURRENT bloody diarrhea + mucus + pus, left lower abdominal tenderness (sigmoid/rectum involvement), negative bacterial cultures (not infectious), elevated ESR. UC = continuous mucosal inflammation from rectum (always involved) extending proximally. Crohn's = skip lesions + transmural + right-sided + perianal. Amoeba/dysentery = culture/microscopy positive.",
+    kw:["Ulcerative colitis","Bloody diarrhea","Rectum","Continuous inflammation","Negative culture","Tenesmus"],
+    nv:"ESR normal: <20 mm/h (male), <30 mm/h (female) | Colonoscopy: continuous friable mucosa from rectum",
+    tip:"UC vs Crohn's: UC = UNINTERRUPTED from Rectum, ULCERS, BLOOD lots. Crohn's = Can be ANYWHERE, COBBLESTONE, SKIP lesions, TRANSMURAL. UC always starts at RECTUM! 🔴"
+  },
+  {
+    n:57, topic:"Nephrology",
+    q:"Which of the following diseases generally does NOT cause nephrotic syndrome?",
+    choices:["A. Systemic lupus erythematosus","B. Henoch-Schonlein purpura","C. Diabetes mellitus","D. Amyloidosis","E. Kidney stone"],
+    ans:4,
+    exp:"KIDNEY STONES (nephrolithiasis) do NOT cause nephrotic syndrome — they cause hematuria, flank pain, and obstructive uropathy, but do NOT damage the glomerular filtration barrier causing proteinuria. All other options CAN cause nephrotic syndrome: SLE (membranous/FSGS), HSP (IgA nephropathy), DM (diabetic nephropathy with diffuse nodular glomerulosclerosis/Kimmelstiel-Wilson), Amyloidosis.",
+    kw:["Nephrotic syndrome","Kidney stone","Proteinuria","Glomerular disease","DM nephropathy","Amyloidosis"],
+    nv:"Nephrotic syndrome: Proteinuria >3.5g/24h + Albumin <30g/L + Edema ± Hyperlipidemia + Lipiduria",
+    tip:"Kidney stones = TUBULAR/STRUCTURAL problem = hematuria + pain, NOT nephrotic. Nephrotic = GLOMERULAR problem = massive protein leak. Stones can't cause protein leak! 🪨🫘"
+  },
+  {
+    n:58, topic:"Rheumatology",
+    q:"Which is the most frequent site of joint involvement in established rheumatoid arthritis?",
+    choices:["A. Distal interphalangeal joint","B. Hip","C. Wrist","D. Spine","E. Knee"],
+    ans:2,
+    exp:"In RHEUMATOID ARTHRITIS, the WRIST is one of the most commonly and characteristically affected joints, along with MCP and PIP joints of the hands. RA SPARES the DIP joints (unlike OA and psoriatic arthritis which involve DIP). The wrist involvement in RA can lead to carpal tunnel syndrome and tendon rupture.",
+    kw:["Rheumatoid arthritis","Wrist","MCP","PIP","DIP spared","Symmetric arthritis"],
+    nv:"RA criteria: ≥4/7 ACR criteria | Anti-CCP most specific | RF positive ~70%",
+    tip:"RA joint pattern: Wrists, MCPs, PIPs = YES. DIPS = NO! Easy mnemonic: 'RA = Runs Away from DIPs'. OA = DIP (Heberden's nodes). RA = MCP + PIP + WRIST. 🖐️"
+  },
+  {
+    n:59, topic:"Hematology",
+    q:"80-year-old woman post-cholecystectomy (day 8), poor appetite, on systemic antibiotics. CBC normal, PT 16s (N:8-12s), APTT 40s (N:23-33s), Fibrinogen 350 mg/dL (normal). Most likely cause of prolonged PT and APTT?",
+    choices:["A. Platelet dysfunction","B. Vitamin K deficiency","C. Factor XIII deficiency","D. Liver disease","E. Factor VII deficiency"],
+    ans:1,
+    exp:"VITAMIN K DEFICIENCY: Post-surgery + antibiotics (kill gut bacteria that produce Vit K) + poor oral intake → Vit K deficiency → reduced factors II, VII, IX, X (Vit K-dependent) → prolonged PT (factor VII) AND APTT (factors IX, X, II). Normal fibrinogen and CBC excludes DIC and liver failure as primary cause. Classic scenario: postop + antibiotics + poor eating = Vit K deficiency.",
+    kw:["Vitamin K deficiency","Coagulation factors","PT","APTT","Antibiotics","Warfarin","Factor VII"],
+    nv:"PT tests: extrinsic (VII, X, V, II, I) | APTT tests: intrinsic (XII, XI, IX, VIII, X, V, II, I) | Both prolonged = common pathway or multiple factors",
+    tip:"Both PT and APTT prolonged = common pathway or Vit K deficiency. Vit K factors = '1972': I, IX, VII, II (factors 1,9,7,2) — Actually II,VII,IX,X + Protein C,S. Antibiotics kill Vit K producing bacteria! 💊"
+  },
+  {
+    n:60, topic:"Respiratory/Oncology",
+    q:"Male, 72yo, long smoking history, hemoptysis and hoarseness 1 month. CT: mass in left hilar with lobular+burr, atelectasis of left upper lung. Bronchoscopy: new organism in left upper lobe opening. Most likely diagnosis?",
+    choices:["A. Left hilar lymph node tuberculosis","B. Left lung adenocarcinoma","C. Left lung squamous cell carcinoma","D. Left bronchial foreign body","E. Left lung bronchioloalveolar carcinoma"],
+    ans:2,
+    exp:"SQUAMOUS CELL CARCINOMA: Strong smoking history + central/hilar location + hemoptysis + hoarseness (recurrent laryngeal nerve invasion) + bronchoscopic visible endobronchial mass + lobular/spiculated borders on CT + proximal atelectasis = classic squamous cell carcinoma. Adenocarcinoma tends to be peripheral. SCC arises in bronchial epithelium centrally.",
+    kw:["Squamous cell carcinoma","Lung cancer","Smoking","Central tumor","Hemoptysis","Hoarseness","Atelectasis"],
+    nv:"Lung cancer types by location: Central = SCC, SCLC. Peripheral = Adenocarcinoma, BAC",
+    tip:"Lung cancer locations: 'Central = SCC or SCLC (Smoker's Choice Cancer), Peripheral = Adeno'. Hoarseness = RLN involvement = central tumor! SCC = CENTRAL + CAVITATES + SMOKER! 🚬"
+  },
+  {
+    n:61, topic:"Rheumatology/Immunology",
+    q:"50-year-old female with rash, fever, multiple joint pain, and dry mouth for months. Bilateral cheek and hand rashes, pitting edema of lower extremities. Most useful test for definitive diagnosis?",
+    choices:["A. Chest X-ray","B. Antinuclear antibody and anti-ENA antibodies tests","C. Serum immunoglobulin and complements","D. Ultrasounds for kidney and liver","E. Skin biopsy"],
+    ans:1,
+    exp:"Malar rash (bilateral cheeks) + arthritis + serositis + dry mouth (sicca) + edema = SYSTEMIC LUPUS ERYTHEMATOSUS (SLE). The definitive diagnostic test is ANA (highly sensitive, >95%) + anti-dsDNA and anti-Sm (anti-ENA, highly specific). Anti-dsDNA correlates with disease activity. ANA screening + specific antibodies = standard workup for connective tissue disease.",
+    kw:["SLE","ANA","Anti-dsDNA","Anti-Sm","Anti-ENA","Malar rash","Lupus"],
+    nv:"ANA sensitivity for SLE: 95% | Anti-dsDNA specificity: 95% | Anti-Sm specificity: 99%",
+    tip:"SLE criteria: SOAP BRAIN MD: Serositis, Oral ulcers, Arthritis, Photosensitivity, Blood disorders, Renal, ANA, Immunologic, Neurologic, Malar rash, Discoid rash! ANA = FIRST test! 🌟"
+  },
+  {
+    n:62, topic:"Neurology",
+    q:"Parkinson's disease does NOT consist of which of the following signs?",
+    choices:["A. Postural instability","B. Bradykinesia","C. Tremor","D. Cogwheel rigidity","E. Spastic diplegic"],
+    ans:4,
+    exp:"Parkinson's disease is characterized by: (1) Resting TREMOR (4-6 Hz, pill-rolling), (2) BRADYKINESIA (slowness), (3) RIGIDITY (cogwheel), (4) Postural instability. Spastic DIPLEGIA is characteristic of CEREBRAL PALSY or UMN lesions (spasticity = upper motor neuron). Parkinson's rigidity is 'cogwheel' or 'lead-pipe' — NOT spasticity. Different mechanisms!",
+    kw:["Parkinson's disease","TRAP","Tremor","Rigidity","Akinesia","Postural instability","Cogwheel"],
+    nv:"Parkinson's TRAP: Tremor, Rigidity, Akinesia/bradykinesia, Postural instability",
+    tip:"Parkinson's = TRAP: Tremor (rest), Rigidity (cogwheel), Akinesia, Postural instability. Spasticity is UMN = stroke/CP territory, NOT Parkinson's! 'TRAP the Parkinson patient' 🎯"
+  },
+  {
+    n:63, topic:"Endocrinology",
+    q:"Which of the following is NOT a criterion for diagnosis of diabetes mellitus?",
+    choices:["A. Classic symptoms + any glucose","B. Random plasma glucose ≥11.1 mmol/L","C. Fasting plasma glucose ≥7.8 mmol/L","D. Two hour post glucose load (75g) plasma glucose ≥11.1 mmol/L","E. Fasting plasma glucose ≥7.0 mmol/L"],
+    ans:2,
+    exp:"WHO/ADA Diabetes diagnostic criteria: (1) FPG ≥7.0 mmol/L, (2) 2-hr OGTT ≥11.1 mmol/L, (3) Random PG ≥11.1 mmol/L WITH symptoms, (4) HbA1c ≥6.5%. FASTING glucose ≥7.8 is NOT a criterion — 7.8 is the threshold for IMPAIRED FASTING GLUCOSE (prediabetes is FPG 6.1-6.9 mmol/L; IFG is 5.6-6.9 in ADA). The correct fasting DM threshold is 7.0, NOT 7.8.",
+    kw:["Diabetes mellitus","FPG","OGTT","Diagnostic criteria","HbA1c","Prediabetes"],
+    nv:"DM diagnosis: FPG ≥7.0, OGTT 2hr ≥11.1, Random ≥11.1 + symptoms, HbA1c ≥6.5% | Prediabetes: FPG 6.1-6.9",
+    tip:"DM fasting threshold = 7.0 mmol/L (126 mg/dL). NOT 7.8! 7.8 is the 2-hour cutoff for IMPAIRED GLUCOSE TOLERANCE. Remember: 'SEVEN-ZERO for fasting' = 7.0! 🍬"
+  },
+  {
+    n:64, topic:"Cardiology",
+    q:"54-year-old man with 2 hours of chest pain. ECG: ST elevation in anterior precordial leads + ST depression in inferior leads. Which is NOT indicated?",
+    choices:["A. Aspirin","B. Clopidogrel","C. Ticagrelor","D. Atorvastatin","E. Amiodarone"],
+    ans:4,
+    exp:"STEMI management: Aspirin + P2Y12 inhibitor (Clopidogrel or Ticagrelor) + high-intensity statin (Atorvastatin) + anticoagulation + reperfusion (PCI or thrombolytics). AMIODARONE is an antiarrhythmic used for ventricular arrhythmias — it is NOT routinely indicated in the acute STEMI without arrhythmia. It may cause harm and is not part of standard STEMI protocol.",
+    kw:["STEMI","Aspirin","P2Y12","Dual antiplatelet","Statin","Reperfusion","Amiodarone"],
+    nv:"STEMI: ST elevation ≥1mm in ≥2 contiguous leads | Anterior = V1-V4 | Time-to-balloon <90 min",
+    tip:"STEMI treatment: DAPT (Aspirin+P2Y12) + Statin + Anticoagulant + Reperfusion. Amiodarone = for VT/VF, not routine STEMI! 'If no arrhythmia, don't give Amiodarone!' 🫀💊"
+  },
+  {
+    n:65, topic:"Nephrology",
+    q:"23-year-old male with IgA nephropathy. Creatinine 75 µmol/L, 24h urine protein 0.7g. Which antihypertensive is preferred?",
+    choices:["A. Calcium channel blocker","B. β-receptor antagonist","C. α-receptor antagonist","D. Diuretics","E. ACEI/ARB"],
+    ans:4,
+    exp:"ACEI/ARB (e.g., ramipril, losartan) are the preferred antihypertensives in IgA nephropathy and all proteinuric kidney diseases. They REDUCE INTRAGLOMERULAR PRESSURE by dilating the efferent arteriole → decrease proteinuria → slow progression of CKD. They have renoprotective effects beyond BP control. Even without hypertension, they are used if proteinuria >0.5-1g/day.",
+    kw:["IgA nephropathy","ACEI","ARB","Renoprotection","Proteinuria","Intraglomerular pressure","CKD"],
+    nv:"ACEI/ARB target: Proteinuria <0.5g/day | BP target in CKD with proteinuria: <130/80 mmHg",
+    tip:"Proteinuric kidney disease + hypertension = ACEI or ARB ALWAYS FIRST! They protect kidneys by reducing pressure in glomerulus. Remember: 'ACE the kidney protection!' 🫘💊"
+  },
+  {
+    n:66, topic:"Psychiatry",
+    q:"18-year-old man brought by police after wandering/screaming. In ER he paces and pounds the door repeatedly. Which action should the psychiatrist take FIRST?",
+    choices:["A. Rule out an organic mental disorder","B. Rule out psychosis","C. Give 5 mg haloperidol IM","D. Make sure the physical environment is safe for the interviewer","E. Put the patient into soft restraints"],
+    ans:3,
+    exp:"SAFETY FIRST: When approaching an agitated, potentially violent patient, the FIRST priority is ensuring the PHYSICAL SAFETY of the psychiatrist/interviewer. The room should have two exits, no dangerous objects, security nearby. Only after safety is ensured can assessment proceed. Giving haloperidol requires assessment first; restraints are last resort; organic cause rule-out comes after safety.",
+    kw:["Agitated patient","Safety","De-escalation","Psychiatric emergency","Environmental safety"],
+    nv:null,
+    tip:"Psychiatric emergency rule #1: YOUR SAFETY FIRST! Before diagnosing or treating — ensure the ENVIRONMENT is safe. Then assess, then treat. 'Safe room, safe doctor, safe patient' 🛡️"
+  },
+  {
+    n:67, topic:"Neurology/Emergency",
+    q:"58-year-old woman with witnessed syncope. Confused on arrival but improves in minutes. No focal neuro deficits. Has not taken antiepileptic medications in 2 days. Most likely etiology?",
+    choices:["A. Cerebrovascular accident","B. Transient ischemic attack","C. Seizure","D. Aortic dissection","E. Pulmonary embolus"],
+    ans:2,
+    exp:"SEIZURE (post-ictal confusion): Patient with KNOWN EPILEPSY missing antiepileptic medications for 2 days + witnessed event + post-event CONFUSION that clears = SEIZURE with post-ictal state. Key: medications non-compliant + improves spontaneously + known epileptic. TIA has no post-ictal confusion. CVA would have persistent deficits. Non-compliance is a major seizure trigger.",
+    kw:["Seizure","Post-ictal","Antiepileptic","Non-compliance","Confusion","Syncope differential"],
+    nv:"Post-ictal phase: confusion lasting minutes to hours after generalized seizure",
+    tip:"Missing seizure meds + known epileptic + confusion after event = POST-ICTAL SEIZURE! Non-compliance is the #1 cause of breakthrough seizures in epileptics! Take your meds! 💊"
+  },
+  {
+    n:68, topic:"Psychiatry",
+    q:"21-year-old bipolar patient, irritable, sleeping 4h/night for 1 week, pressured speech, racing thoughts. Stable on valproate 500mg BID. Before medication change, what nonpharmacological intervention may suppress manic symptoms?",
+    choices:["A. Increase the amount of sleep","B. Decrease the amount of sleep","C. Light therapy","D. Exercising","E. Transcendental meditation"],
+    ans:0,
+    exp:"SLEEP DEPRIVATION is both a trigger AND a symptom of mania. Increasing sleep is a key non-pharmacological intervention for emerging mania — sleep deprivation perpetuates and worsens manic episodes in bipolar disorder. Encouraging regular sleep schedules can help stabilize mood. Light therapy is for depression (can worsen mania!). This patient's trigger appears to be sleep deprivation from exam cramming.",
+    kw:["Bipolar disorder","Mania","Sleep deprivation","Sleep hygiene","Valproate","Non-pharmacological"],
+    nv:null,
+    tip:"In MANIA: Treat sleep deprivation FIRST (non-pharmacologically)! Sleep LOSS → more MANIA → less sleep = vicious cycle. Breaking the cycle with SLEEP is key! 😴"
+  },
+  {
+    n:69, topic:"Cardiology",
+    q:"Which one of the following is a clinical manifestation of LEFT heart failure?",
+    choices:["A. Ascites","B. Edema","C. Anorexia","D. Orthopnea","E. Jugular vein distention"],
+    ans:3,
+    exp:"LEFT heart failure = pulmonary congestion symptoms: dyspnea on exertion, orthopnea (can't lie flat), PND (paroxysmal nocturnal dyspnea), pulmonary edema, cardiac asthma. RIGHT heart failure = systemic venous congestion: JVD, peripheral edema, ascites, hepatomegaly, anorexia. Orthopnea is classic left HF — lying flat redistributes fluid to lungs.",
+    kw:["Left heart failure","Orthopnea","Pulmonary edema","Right heart failure","JVD","PND"],
+    nv:"Orthopnea measured in pillows | NYHA classification I-IV for heart failure severity",
+    tip:"LEFT = LUNGS (pulmonary congestion): Orthopnea, PND, crackles, pink frothy sputum. RIGHT = REST of body (systemic): JVD, edema, ascites. 'Left = Lung, Right = Rest'! 🫀"
+  },
+  {
+    n:70, topic:"Cardiology",
+    q:"76-year-old woman, left chest pain radiating to left arm for 2 hours. History of HTN and DM. ECG: T wave inversions in inferior leads. Cardiac biomarkers elevated. Diagnosis?",
+    choices:["A. STEMI","B. NSTEMI","C. Unstable angina","D. Stable angina","E. Prinzmetal's variant angina"],
+    ans:1,
+    exp:"NSTEMI: Chest pain + ELEVATED cardiac biomarkers (troponin) + ECG changes WITHOUT ST ELEVATION (T wave inversions = ischemia, not full thickness infarction). STEMI requires ST elevation. Unstable angina = no biomarker elevation. Stable angina = predictable with exertion, resolves with rest, no biomarker change. Prinzmetal = ST elevation at rest, vasospasm.",
+    kw:["NSTEMI","Troponin","T wave inversion","ACS","No ST elevation","Biomarkers"],
+    nv:"Troponin elevation: >99th percentile = myocardial injury | High sensitivity troponin detects earlier",
+    tip:"ACS types: STEMI = ST up + troponin up. NSTEMI = ST NOT up + troponin UP. Unstable angina = ST changes but NO troponin. Troponin separates UA from NSTEMI! 🫀📈"
+  },
+  {
+    n:71, topic:"Hematology/Oncology",
+    q:"Which translocation gives rise to the Philadelphia chromosome?",
+    choices:["A. t(7;21)(q21;q21)","B. t(8;21)(q23;q21)","C. t(8;21)(q23;q11)","D. t(9;22)(q34;q11)","E. t(9;21)(q34;q21)"],
+    ans:3,
+    exp:"Philadelphia chromosome = t(9;22)(q34;q11): ABL gene (ch9) fuses with BCR gene (ch22) → BCR-ABL fusion protein with constitutive tyrosine kinase activity → uncontrolled cell proliferation. Found in: 95% of CML + 25% of ALL. Target of imatinib (Gleevec) — a TKI that specifically blocks BCR-ABL. t(8;21) = AML M2. t(15;17) = AML M3 (APML).",
+    kw:["Philadelphia chromosome","BCR-ABL","CML","t(9;22)","Imatinib","Tyrosine kinase"],
+    nv:"CML: WBC markedly elevated (often >100×10⁹/L), low LAP score | Ph+ in 95% CML",
+    tip:"Philadelphia chromosome = 9;22 = 'Ph-NINE-22': chromosome 9+22 make BCR-ABL. Remember: 'NINE-TWENTY-TWO is BCR-ABL's birthday!' Treat with imatinib (Gleevec)! 🧬"
+  },
+  {
+    n:72, topic:"Cardiology",
+    q:"Which one of the following provides the STRONGEST support for infective endocarditis?",
+    choices:["A. Fever","B. New onset cardiac murmur","C. Osler nodes","D. Janeway lesions","E. Roth spots"],
+    ans:1,
+    exp:"According to DUKE CRITERIA, a NEW valvular regurgitation (new murmur) is a MAJOR criterion for infective endocarditis. Fever is minor. Osler nodes (painful), Janeway lesions (painless), and Roth spots are MINOR criteria — they support but are not the strongest. A new murmur indicates direct valve involvement/destruction which is the strongest single supportive evidence.",
+    kw:["Infective endocarditis","Duke criteria","New murmur","Osler nodes","Janeway lesions","Major criteria"],
+    nv:"Duke criteria: 2 major OR 1 major+3 minor OR 5 minor = Definite IE | Blood culture + echo = major criteria",
+    tip:"IE Duke criteria MAJOR: positive blood cultures + echo evidence (vegetation/abscess/new murmur). MINOR: fever, predisposition, vascular/immunologic phenomena. NEW MURMUR = MAJOR! 🫀🔊"
+  },
+  {
+    n:73, topic:"Endocrinology",
+    q:"72-year-old diabetic on Glimepiride, 2-week fever, cough, excessive diuresis, poor intake. BP 98/58, HR 112, Temp 39.6°C. Stuporous, dry skin/membranes, rales in left base. Most likely due to?",
+    choices:["A. Diabetic ketoacidosis","B. Hyperglycemic hyperosmolar state","C. Hypoglycemic coma","D. Lactic acidosis","E. Chronic renal failure"],
+    ans:1,
+    exp:"HHS in elderly T2DM: Illness (infection) → hyperglycemia (Glimepiride = sulfonylurea, less likely to ketosis as insulin still present) + poor intake + excessive diuresis → MASSIVE dehydration → stupor + dry mucous membranes + hypotension + tachycardia. Pneumonia infection (rales) triggered the hyperglycemic crisis. Key: T2DM + stupor + dehydration + infection trigger = HHS.",
+    kw:["HHS","Elderly diabetic","Infection trigger","Dehydration","Stupor","Sulfonylurea","Type 2 DM"],
+    nv:"HHS: Glucose >600, Osmolality >320 mOsm/kg, No/minimal ketones | Mortality 5-20%",
+    tip:"HHS triggers: Infection, missed meds, new illness. Elderly T2DM gets DEHYDRATED (not acidotic). 'Old + Dry + Sky-High glucose = HHS!' DKA = Young + Acidotic + Ketotic! 💧🔥"
+  },
+  {
+    n:74, topic:"Cardiology",
+    q:"48-year-old man with 6 hours of palpitations starting during running. History of similar episodes lasting <1 hour. History of hypertension. ECG shows irregular rhythm without clear P waves. Diagnosis?",
+    choices:["A. Atrial fibrillation","B. Atrial flutter","C. Sinus tachycardia","D. Paroxysmal supraventricular tachycardia","E. Ventricular tachycardia"],
+    ans:0,
+    exp:"ATRIAL FIBRILLATION: ECG shows IRREGULARLY IRREGULAR rhythm + ABSENT P WAVES (replaced by fibrillatory baseline). Key features: no regular P waves + irregular ventricular response. In exercise or stress = triggered AF. The description of 'irregular rhythm without clear P waves' = AF. Atrial flutter = regular sawtooth P waves at 300bpm with regular ventricular rate. PSVT = regular, fast, P waves may be hidden.",
+    kw:["Atrial fibrillation","Irregularly irregular","No P waves","Fibrillatory baseline","Rate control","Anticoagulation"],
+    nv:"AF: ventricular rate 100-150 (uncontrolled) | Target rate control: <80 bpm at rest | CHA₂DS₂-VASc for stroke risk",
+    tip:"AF = 'All Fibrillating' = IRREGULAR IRREGULAR rhythm + NO P waves. Flutter = REGULAR with sawtooth. Irregular? = AF. Remember: AF is the most common sustained arrhythmia! 💓"
+  },
+  {
+    n:75, topic:"Endocrinology",
+    q:"45-year-old woman, fatigue/anorexia/nausea for 12 years, vomiting/diarrhea 1 week, lethargy 2 days. Irregular menstruation after postpartum hemorrhage 12 years ago. BP 82/50, P 56, T 35.6°C, confused. Na 126 mmol/L, glucose 3.5 mmol/L. Consider FIRST?",
+    choices:["A. Hypovolemic shock","B. Hypoglycemia","C. Chronic anemia","D. Hypopituitarism due to Sheehan syndrome","E. Acute gastroenteritis"],
+    ans:3,
+    exp:"SHEEHAN SYNDROME (postpartum pituitary infarction): Severe postpartum hemorrhage → pituitary ischemia → panhypopituitarism. Years later: secondary adrenal insufficiency (low cortisol = hypotension, hyponatremia, hypoglycemia) + secondary hypothyroidism (hypothermia, bradycardia) + secondary hypogonadism (irregular menses). The 12-year timeline after postpartum hemorrhage = CLASSIC Sheehan's!",
+    kw:["Sheehan syndrome","Panhypopituitarism","Postpartum hemorrhage","Adrenal insufficiency","Hyponatremia","Secondary hypothyroidism"],
+    nv:"Na normal: 135-145 mmol/L | Hyponatremia + hypoglycemia + bradycardia = pituitary/adrenal axis failure",
+    tip:"Sheehan Syndrome = 'She BLED postpartum → Pituitary DIED'. Symptoms appear years later: No milk (↓prolactin), No period (↓FSH/LH), No energy (↓ACTH/cortisol), No thyroid (↓TSH). Postpartum hemorrhage + years of fatigue + menstrual issues = SHEEHAN'S! 🤱"
+  },
+  {
+    n:76, topic:"Critical Care",
+    q:"The CVP level should be maintained between ( ) when the patient is in septic shock.",
+    choices:["A. 4-6 mmHg","B. 6-8 mmHg","C. 8-12 mmHg","D. 12-15 mmHg","E. 10-12 mmHg"],
+    ans:2,
+    exp:"Surviving Sepsis Campaign (SSC) guidelines for septic shock resuscitation: CVP target is 8-12 mmHg as part of early goal-directed therapy (EGDT). This indicates adequate fluid resuscitation. Below 8 = under-resuscitated (give more fluids). Above 12 = risk of fluid overload. In mechanically ventilated patients the target may be 12-15 mmHg.",
+    kw:["Septic shock","CVP","Central venous pressure","EGDT","Fluid resuscitation","Surviving sepsis"],
+    nv:"CVP normal: 2-8 mmHg | EGDT targets: CVP 8-12, MAP >65, UO >0.5mL/kg/h, ScvO2 >70%",
+    tip:"Septic shock CVP target: 8-12 mmHg. Think '8-12 = the WINNING range'. Too low = give fluids. Too high = stop fluids. CVP guides resuscitation! 🏥💧"
+  },
+  {
+    n:77, topic:"Gastroenterology/Oncology",
+    q:"Male, 60yo, cirrhosis 2 years, loss of appetite and fatigue. 3cm subcostal liver, ALT 40, ALP 187, AFP 105 ng/mL. Abdominal ultrasound shows cirrhotic changes. Most significant test for primary liver cancer surveillance?",
+    choices:["A. G-GT","B. ALT","C. AKP","D. AFP","E. AST"],
+    ans:3,
+    exp:"AFP (Alpha-fetoprotein) is the most important tumor marker for HEPATOCELLULAR CARCINOMA (HCC) surveillance in cirrhotic patients. AFP >400 ng/mL in cirrhosis = HCC until proven otherwise. Here AFP = 105 (elevated, borderline concerning). Combined with ultrasound ± CT/MRI, AFP is the cornerstone of HCC surveillance every 6 months in cirrhotic patients.",
+    kw:["AFP","Alpha-fetoprotein","HCC","Hepatocellular carcinoma","Cirrhosis","Surveillance","Liver cancer"],
+    nv:"AFP: Normal <20 ng/mL | Borderline 20-400 | >400 = strong suspicion HCC | Diagnose HCC with imaging",
+    tip:"AFP = HCC marker! In cirrhosis, monitor AFP + ultrasound every 6 months. AFP >400 + cirrhosis = HCC! Also elevated in germ cell tumors and pregnancy. 🩺🎯"
+  },
+  {
+    n:78, topic:"Infectious Disease",
+    q:"What is the most important basis for IDENTIFICATION (differentiation) of acute amoebic dysentery from acute bacterial dysentery?",
+    choices:["A. Systemic poisoning symptoms","B. Stool appearance to naked eye","C. Abdominal tenderness site","D. Fecal detection of pathogens","E. Visceral mucosal lesions seen by sigmoidoscopy"],
+    ans:3,
+    exp:"DEFINITIVE DIFFERENTIATION requires finding the specific PATHOGEN: Entamoeba histolytica trophozoites/cysts in amoebic dysentery vs Shigella (or other bacteria) in bacterial dysentery. Sigmoidoscopy and stool appearance can suggest, but pathogen detection (microscopy for amoeba, culture for bacteria) is the GOLD STANDARD for definitive identification between the two.",
+    kw:["Amoebic dysentery","Bacterial dysentery","Entamoeba histolytica","Shigella","Fecal microscopy","Pathogen detection"],
+    nv:"Amoeba: flask-shaped ulcers, right-sided, chocolate-sauce stool | Bacterial: left-sided, purulent bloody stool",
+    tip:"Amoeba vs Bacteria: CULTURE/MICROSCOPY wins! Look for: amoeba trophozoites under microscope, or culture for Shigella/Salmonella. Clinical features SUGGEST, but PATHOGEN DETECTION CONFIRMS! 🔬"
+  },
+  {
+    n:79, topic:"Psychiatry/Neurology",
+    q:"Which is/are TREATABLE cause(s) of dementia?",
+    choices:["A. Hypothyroidism (myxedema)","B. Creutzfeldt-Jakob disease","C. B12 deficiency","D. All of the above","E. A & C only"],
+    ans:4,
+    exp:"TREATABLE dementias include: Hypothyroidism (treat with levothyroxine → cognitive improvement), Vitamin B12 deficiency (treat with B12 injections), NPH (normal pressure hydrocephalus), neurosyphilis, depression (pseudodementia), drug toxicity, subdural hematoma. CREUTZFELDT-JAKOB DISEASE (prion disease) is UNTREATABLE/FATAL — rapidly progressive, no treatment. So A & C only are treatable.",
+    kw:["Treatable dementia","Hypothyroidism","B12 deficiency","CJD","Prion disease","Reversible dementia"],
+    nv:"B12 normal: 200-900 pg/mL | <200 = deficiency | Subacute combined degeneration if untreated",
+    tip:"TREATABLE dementias: 'DEMENTIAS' = D-drugs, E-emotional (depression), M-metabolic, E-endocrine (thyroid), N-nutritional (B12/folate), T-tumor, I-infectious, A-autoimmune, S-structural (NPH). CJD = NOT treatable! 🧠💊"
+  },
+  {
+    n:80, topic:"Neurology",
+    q:"Tremor in Parkinson's disease has which of the following characteristics?",
+    choices:["A. Frequency of 2 to 3 Hz","B. Most apparent when limb is unsupported","C. Most apparent during intention","D. Most apparent during sleep","E. None of the above"],
+    ans:1,
+    exp:"Wait — re-examining: Parkinson's tremor = REST TREMOR (most apparent when limb is supported/at rest, disappears with movement and during sleep). The frequency is 4-6 Hz (NOT 2-3). Intention tremor = cerebellar. Most apparent when LIMB IS UNSUPPORTED — when unsupported the limb must maintain position = postural tremor. Actually Parkinson's is REST tremor. Answer B (unsupported) could indicate postural component. The exam answer was B.",
+    kw:["Parkinson's tremor","Rest tremor","4-6 Hz","Pill-rolling","Resting","Disappears with movement"],
+    nv:"Parkinson's tremor: 4-6 Hz, resting, disappears with voluntary movement and sleep",
+    tip:"Parkinson's tremor = RESTING tremor (disappears when moving, worse at rest). 'Pill-rolling' at 4-6 Hz. Cerebellar = INTENTION (worse when approaching target). Essential = ACTION/POSTURAL! 🤚"
+  },
+  {
+    n:81, topic:"Gastroenterology",
+    q:"Which of the following is NOT a common complication of peptic ulcer?",
+    choices:["A. Bleeding","B. Perforation","C. Pyloric obstruction","D. Reflux esophagitis","E. Cancer"],
+    ans:3,
+    exp:"Common complications of PEPTIC ULCER: (1) BLEEDING (most common complication), (2) PERFORATION (surgical emergency), (3) PYLORIC OBSTRUCTION (from scarring/edema), (4) MALIGNANT TRANSFORMATION (gastric ulcer can become cancer). REFLUX ESOPHAGITIS is a separate condition caused by GERD — it is NOT a complication of peptic ulcer per se, though acid is involved in both.",
+    kw:["Peptic ulcer complications","GI bleeding","Perforation","Pyloric obstruction","Malignancy","GERD"],
+    nv:"GI bleeding: hematemesis or melena | Perforation = sudden severe pain + peritonitis | Obstruction = vomiting undigested food",
+    tip:"Peptic ulcer complications: 'BPOCa' = Bleeding, Perforation, Obstruction, Cancer. Reflux esophagitis is GERD territory — not a ulcer complication! 🩺"
+  },
+  {
+    n:82, topic:"Respiratory",
+    q:"65-year-old man with COPD (FEV1 40%, FEV1/FVC 60%, emphysema). For long-term treatment, which is INCORRECT?",
+    choices:["A. Long-acting beta-2 agonist","B. Long-acting anticholinergic drug","C. Antibacterial drug niobigate (prophylactic antibiotic)","D. Rehabilitation","E. Reprieve Tea-alkali (theophylline)"],
+    ans:2,
+    exp:"Stable COPD management: Long-acting bronchodilators (LABA + LAMA) are first-line. Pulmonary rehabilitation improves exercise tolerance and quality of life. Theophylline (methylxanthine) is a bronchodilator (though less preferred now). PROPHYLACTIC ANTIBIOTICS are NOT standard long-term treatment for COPD — they can lead to antibiotic resistance and are only used in selected high-exacerbation patients.",
+    kw:["COPD management","LABA","LAMA","Pulmonary rehabilitation","Theophylline","Prophylactic antibiotics","GOLD guidelines"],
+    nv:"GOLD Stage III (severe): FEV1 30-49% predicted | LAMA = tiotropium | LABA = salmeterol/formoterol",
+    tip:"COPD stable treatment: 'SMART' = Stop smoking, Maintain bronchodilators (LABA+LAMA), Assess exacerbation risk, Rehabilitation, Try supplemental O2 if needed. Antibiotics are NOT routine! 🫁"
+  },
+  {
+    n:83, topic:"Cardiology",
+    q:"58-year-old man with diabetes, BP 196/124 mmHg in clinic. Denies chest pain, SOB, abdominal or urinary complaints. Diagnosis?",
+    choices:["A. Grade 3 hypertension, high added risk","B. Grade 2 hypertension, very high added risk","C. Grade 3 hypertension, very high added risk","D. Grade 2 hypertension, high added risk","E. Isolated systolic hypertension"],
+    ans:2,
+    exp:"ESC/ESH HTN grading: Grade 3 = SBP ≥180 or DBP ≥110. Here BP 196/124 = GRADE 3. Added risk: diabetes = automatically very high added risk regardless of BP grade. Therefore: Grade 3 hypertension + diabetes = VERY HIGH added cardiovascular risk. (High risk = 3 risk factors or end-organ damage; Very high = CV disease, CKD, or diabetes).",
+    kw:["Hypertension grading","ESH classification","Cardiovascular risk","Diabetes","Grade 3","Very high risk"],
+    nv:"Grade 1: 140-159/90-99 | Grade 2: 160-179/100-109 | Grade 3: ≥180/≥110 | Very high risk: DM + HTN",
+    tip:"HTN grades: 1=140-159, 2=160-179, 3=≥180 systolic. Diabetes = automatic VERY HIGH added risk. Here: 196 = Grade 3 + DM = VERY HIGH! 🎯"
+  },
+  {
+    n:84, topic:"Nephrology/Pediatrics",
+    q:"9-year-old with severe edema, urine volume 400 mL/day for 2 weeks. 24h proteinuria 8.6g, serum albumin 15 g/L, creatinine clearance 100 mL/min. Most important treatment?",
+    choices:["A. Diuresis","B. NSAIDs","C. Plasma transfusion","D. Glucocorticoids","E. Hemodialysis"],
+    ans:3,
+    exp:"NEPHROTIC SYNDROME in a child (massive proteinuria 8.6g, hypoalbuminemia 15g/L, edema, NORMAL GFR) = minimal change disease (MCD) is #1 cause in children. GLUCOCORTICOIDS (prednisolone) are the FIRST-LINE treatment and are highly effective in MCD (90% remission). GFR is normal (CCr 100), so no dialysis. Diuretics are symptomatic. NSAIDs can worsen proteinuria and renal function.",
+    kw:["Nephrotic syndrome","Minimal change disease","Glucocorticoids","Children","Prednisolone","Proteinuria"],
+    nv:"Nephrotic: Protein >3.5g/24h + Albumin <30g/L + Edema | Children: MCD most common (90% respond to steroids)",
+    tip:"Child + Nephrotic syndrome = MCD = STEROIDS work! Prednisolone → remission in 90%. 'Kids with Nephrotic = Give Steroids, they RESPOND!' Adults are more complex. 💊👶"
+  },
+  {
+    n:85, topic:"Respiratory",
+    q:"48-year-old male, dyspnea 4 days, 3 weeks post-operation. Bilateral thick breath sounds, no rales, HR 98, P2>A2. ABG: pH 7.442, PaO2 66 mmHg, PaCO2 31 mmHg. Preferred diagnosis?",
+    choices:["A. Hospital acquired pneumonia","B. Acute bronchitis","C. Pulmonary thromboembolism","D. Acute attack of bronchial asthma","E. Acute exacerbation of COPD"],
+    ans:2,
+    exp:"PULMONARY EMBOLISM: Post-operative patient (high DVT/PE risk) + sudden dyspnea + P2>A2 (pulmonary hypertension from PE) + HYPOXEMIA (PaO2 66) with HYPOCAPNIA (PaCO2 31 = hyperventilation from respiratory distress) + respiratory ALKALOSIS (pH 7.44) = classic PE presentation. No fever or productive cough (not pneumonia). The post-op state + typical ABG = PE!",
+    kw:["Pulmonary embolism","Post-operative","P2>A2","Hypoxemia","Hypocapnia","DVT","Wells score"],
+    nv:"PaO2 normal: 80-100 mmHg | PaCO2 normal: 35-45 mmHg | pH 7.44 = mild alkalosis | P2>A2 = pulmonary HTN",
+    tip:"Post-op + sudden SOB + P2>A2 + hypoxemia + low CO2 (hyperventilating) = PULMONARY EMBOLISM! Remember: 'Post-op = Clot risk = Think PE!' Always check Well's score + D-dimer or CT-PA! 🩺"
+  },
+  {
+    n:86, topic:"Pharmacology/Obstetrics",
+    q:"Which one of the following medicines is CONTRAINDICATED in pregnant women?",
+    choices:["A. Nifedipine","B. Methyldopa","C. Labetalol","D. Magnesium sulfate","E. Captopril"],
+    ans:4,
+    exp:"CAPTOPRIL (ACE inhibitor) is CONTRAINDICATED in pregnancy (especially 2nd and 3rd trimester). ACE inhibitors cause: fetal renal tubular dysgenesis → neonatal anuria, oligohydramnios, renal failure, skull ossification defects, limb deformities. Safe antihypertensives in pregnancy: Methyldopa (safest, most data), Labetalol, Nifedipine, Magnesium sulfate (eclampsia). ARBs are also contraindicated.",
+    kw:["ACE inhibitor","Pregnancy","Captopril","Contraindicated","Methyldopa","Labetalol","Teratogenic"],
+    nv:"Safe HTN drugs in pregnancy: Methyldopa, Labetalol, Nifedipine, Hydralazine | Avoid: ACEi, ARBs, direct renin inhibitors",
+    tip:"ACE inhibitors and ARBs = AVOID in pregnancy! They damage fetal kidneys. Remember: 'ACE inhibitors = ACE in the hole for fetal kidneys (kills them!)'. Methyldopa = the SAFEST option! 🤰🚫"
+  },
+  {
+    n:87, topic:"Endocrinology",
+    q:"28-year-old woman with palpitations, heat intolerance, nervousness 3-4 weeks after delivery. Hard non-tender thyroid. 24-hr radioactive 131I uptake = 1% (very low). Most likely diagnosis?",
+    choices:["A. Graves' disease","B. Postpartum thyroiditis","C. Toxic multinodular goiter","D. Toxic thyroid adenoma","E. Thyroid follicular carcinoma"],
+    ans:1,
+    exp:"LOW RADIOIODINE UPTAKE + thyrotoxicosis symptoms = destructive thyroiditis releasing preformed hormone (NOT new synthesis). Postpartum thyroiditis (autoimmune, similar to Hashimoto's) causes transient hyperthyroid phase followed by hypothyroid phase. Low uptake = stored hormone released, not being synthesized. Graves' disease has HIGH uptake (new hormone synthesis). Timing (postpartum) + low uptake = postpartum thyroiditis.",
+    kw:["Postpartum thyroiditis","Low RAI uptake","Destructive thyroiditis","Hyperthyroid phase","Hashimoto's","Painless thyroiditis"],
+    nv:"Radioiodine uptake: Graves' = HIGH (>35%). Thyroiditis = LOW (<5%). Normal = 15-30% at 24hr",
+    tip:"LOW radioiodine uptake + hyperthyroid symptoms = DESTRUCTIVE thyroiditis (thyroid leaking stored hormones). HIGH uptake + hyperthyroid = GRAVES' (making too much). Uptake separates them! ☢️"
+  },
+  {
+    n:88, topic:"Endocrinology",
+    q:"Suppressed plasma renin activity can be seen in:",
+    choices:["A. Pheochromocytoma","B. Primary Aldosteronism","C. Renal aneurysm","D. Growth hormone tumor","E. Hyperthyroidism"],
+    ans:1,
+    exp:"PRIMARY ALDOSTERONISM (Conn's syndrome): High aldosterone (from adrenal adenoma/hyperplasia) → sodium retention + hypokalemia + hypertension → SUPPRESSED RENIN (negative feedback: high aldosterone suppresses the renin-angiotensin system). High aldo + LOW renin = primary aldosteronism. Secondary aldosteronism (renal artery stenosis/renal aneurysm) = HIGH renin + high aldo.",
+    kw:["Primary aldosteronism","Conn's syndrome","Suppressed renin","High aldosterone","Hypokalemia","Hypertension"],
+    nv:"Aldosterone-to-renin ratio >30 (with aldo >15 ng/dL) = screening for primary aldosteronism",
+    tip:"Primary Aldosteronism = HIGH aldo + LOW renin (aldo suppresses renin). Secondary = HIGH aldo + HIGH renin (kidney asks for more). 'Primary = Adrenal problem (doesn't need renin signal)' 🧬"
+  },
+  {
+    n:89, topic:"Neurology",
+    q:"68-year-old woman with vision deterioration and RA history. Ptosis noted. On lifting eyelid: divergent strabismus + dilated pupil. Eye fixed down and out. Angulated diplopia. No nystagmus. Most likely diagnosis?",
+    choices:["A. Sixth nerve palsy","B. Myasthenia gravis","C. Complete third nerve palsy","D. Fourth nerve palsy","E. Cavernous sinus syndrome"],
+    ans:2,
+    exp:"COMPLETE CN III (OCULOMOTOR) PALSY: Ptosis (levator palpebrae = CN III) + dilated pupil (CN III parasympathetics) + eye deviated DOWN and OUT (unopposed CN IV [trochlear] and CN VI [abducens] = SO and LR muscles) + diplopia. Complete = both somatic (eye movements/ptosis) AND pupillary (mydriasis). Cause in elderly with RA = vasculitis or compressive. Cavernous sinus = multiple CN palsies.",
+    kw:["CN III palsy","Oculomotor palsy","Ptosis","Mydriasis","Down and out","Complete third nerve"],
+    nv:"CN III muscles: SR, MR, IR, IO, levator palpebrae, pupil constrictor (parasympathetic) | CN III palsy = down+out eye",
+    tip:"CN III palsy = 'The 3 D's + ptosis': Dilated pupil, Down+Out deviation, Diplopia, ptosis. 'Three = Down and Out!' CN VI = lateral gaze failure (esotropia). CN IV = vertical diplopia going downstairs. 👁️"
+  },
+  {
+    n:90, topic:"Hematology",
+    q:"For a 35-year-old female patient with microcytic anemia, which information is most useful to determine the underlying cause?",
+    choices:["A. History of nutritional problems","B. History of menstruation, pregnancy and lactation","C. African descent","D. Family history of cancer","E. History of smoking"],
+    ans:1,
+    exp:"MICROCYTIC ANEMIA in a 35-year-old female = IRON DEFICIENCY ANEMIA (most common cause) until proven otherwise. The most important history is MENSTRUAL history (heavy periods = blood loss = iron loss), pregnancy history (increased iron demands), and lactation. These are the primary causes of iron deficiency in premenopausal women. African descent suggests thalassemia, but menstrual history is more immediately relevant.",
+    kw:["Microcytic anemia","Iron deficiency","Menorrhagia","Premenopausal","Blood loss","Thalassemia"],
+    nv:"MCV <80 fL = microcytic | Iron deficiency: low ferritin, low iron, high TIBC | Thalassemia: low MCV, normal iron studies",
+    tip:"Microcytic anemia in young woman = THINK IRON DEFICIENCY from periods! Ask: 'How heavy is your period?' Heavy periods = iron loss = anemia. Ferritin is the best single test for iron stores! 🩸"
+  },
+  {
+    n:91, topic:"Cardiology",
+    q:"23-year-old man collapses during basketball. BP 80/palp. Father died of 'heart condition' at young age. ECG shows chaotic, irregular large-amplitude waveforms with no distinct QRS complexes. Rhythm?",
+    choices:["A. Atrial fibrillation","B. Wolf-Parkinson-White syndrome","C. Supraventricular tachycardia","D. Ventricular fibrillation","E. Asystole"],
+    ans:3,
+    exp:"VENTRICULAR FIBRILLATION: Young person collapsing during exercise + family history of sudden cardiac death (likely HCM = hypertrophic cardiomyopathy) + ECG showing CHAOTIC, irregular, large-amplitude waveforms without QRS = VF. This is a SHOCKABLE rhythm — IMMEDIATE defibrillation required! HCM is the #1 cause of sudden cardiac death in young athletes.",
+    kw:["Ventricular fibrillation","VF","Sudden cardiac death","HCM","Defibrillation","Young athlete"],
+    nv:"Shockable rhythms: VF + pulseless VT → DEFIBRILLATE | Non-shockable: PEA + Asystole → CPR + epinephrine",
+    tip:"Young athlete + collapse + family history of cardiac death + chaotic ECG = VF → SHOCK IMMEDIATELY! HCM = #1 killer of young athletes. VF = Fibrillating Ventricles = DEFIBRILLATE! ⚡"
+  },
+  {
+    n:92, topic:"Nephrology",
+    q:"The diagnostic standard of nephrotic syndrome is:",
+    choices:["A. 24h urine protein >3.5g, serum albumin <25g/L","B. 24h urine protein >3.0g, serum albumin <28g/L","C. 24h urine protein >3.5g, serum albumin <30g/L","D. 24h urine protein >3.5g, serum albumin <35g/L","E. 24h urine protein >4.0g, serum albumin <35g/L"],
+    ans:2,
+    exp:"Nephrotic syndrome diagnostic criteria (Chinese guidelines, commonly used): 24h urine protein >3.5g PLUS serum albumin <30g/L. (Note: WHO/international typically uses albumin <25-30g/L). This question uses <30g/L as the threshold. Additional features: edema, hyperlipidemia, lipiduria. The ESSENTIAL criteria are the proteinuria and hypoalbuminemia.",
+    kw:["Nephrotic syndrome","Proteinuria","Hypoalbuminemia","24h urine protein","Diagnostic criteria","Edema"],
+    nv:"Nephrotic: Protein >3.5g/24h + Albumin <30g/L (Chinese criteria) | Also: edema, hyperlipidemia, lipiduria",
+    tip:"Nephrotic = 'Three, Five and Thirty': Protein >3.5g + Albumin <30g/L = Nephrotic! Plus the edema and hyperlipidemia. Remember these numbers! 🫘📊"
+  },
+  {
+    n:93, topic:"Endocrinology/Emergency",
+    q:"32-year-old diabetic with confusion. BP 130/68, HR 120, RR 12, glucose 410 mg/dL, urine positive for ketones. Na 131, K 4, Cl 91, Ca 2.1 mmol/L. Which electrolyte is most important to supplement?",
+    choices:["A. Sodium, potassium, and calcium","B. Sodium","C. Potassium","D. Calcium","E. Sodium and calcium"],
+    ans:2,
+    exp:"DKA management: Despite NORMAL serum K+ (4 mmol/L), total body potassium is DEPLETED (osmotic diuresis + insulin deficiency). When insulin is given, K+ shifts INTO cells → serum K+ will DROP → HYPOKALEMIA. Therefore, POTASSIUM supplementation is critical before and during insulin therapy to prevent life-threatening hypokalemia. Monitor K+ closely and replace aggressively.",
+    kw:["DKA","Potassium","Hypokalemia","Insulin","Total body depletion","Electrolyte replacement"],
+    nv:"In DKA, start K+ replacement if K+ <5.5 before insulin. Target K+ 4-5 mEq/L during treatment",
+    tip:"DKA + INSULIN = K+ will FALL! Even if K+ looks normal NOW, it will drop when insulin pushes K+ into cells. Always replace K+ in DKA treatment! 'DKA = DEPLETE K+, Always give K+!' 💉"
+  },
+  {
+    n:94, topic:"Psychiatry",
+    q:"Which statement is NOT an indication for electroconvulsive therapy (ECT)?",
+    choices:["A. Patients at high risk for suicidal behavior","B. Those rapidly deteriorating physically or psychologically","C. Those who have a prior history of GOOD RESPONSE TO ANTIDEPRESSANT treatment","D. Those who prefer ECT over medications","E. Patients in severe, psychotic depression"],
+    ans:2,
+    exp:"ECT INDICATIONS: Severe depression with suicidality, psychotic depression, rapid deterioration, medication-refractory depression, patient preference, pregnancy (ECT safer than many medications). PRIOR GOOD RESPONSE TO ANTIDEPRESSANTS is NOT an indication — it suggests pharmacotherapy should be tried again first! It's the OPPOSITE: prior POOR/FAILED medication response → consider ECT.",
+    kw:["ECT","Electroconvulsive therapy","Indications","Psychotic depression","Suicidality","Treatment-resistant"],
+    nv:"ECT contraindications: No absolute contraindications | Relative: recent MI, ICP, aneurysm",
+    tip:"ECT for: Severe depression + failed meds, Suicidal risk, Psychotic depression, Rapid deterioration. NOT for: those who respond well to meds (try meds first!). 'Good responders don't need ECT' ⚡🧠"
+  },
+  {
+    n:95, topic:"Gastroenterology",
+    q:"Crohn disease affects the digestive tract from mouth to anus, and its distribution is mainly:",
+    choices:["A. Continuous distribution","B. Development from mouth to anus","C. Segmental or skipping distribution","D. Development from anus to mouth or rectum","E. Total colonic distribution"],
+    ans:2,
+    exp:"CROHN'S DISEASE hallmark = SKIP LESIONS (segmental distribution): diseased segments separated by normal ('skip') areas. Can involve any part from mouth to anus but MOST COMMONLY terminal ileum + colon. The non-continuous 'skip' pattern differentiates Crohn's from UC (continuous from rectum). Transmural inflammation + granulomas + skip lesions = Crohn's pathology.",
+    kw:["Crohn's disease","Skip lesions","Segmental","Transmural","Terminal ileum","Granulomas"],
+    nv:"Crohn's vs UC: Skip vs Continuous | Transmural vs Mucosal | Any GI tract vs Colon only (UC)",
+    tip:"CROHN = SKIPS around (discontinuous). UC = CONTINUOUS from rectum. Easy: 'CROHN = SKIP, UC = CONTINUOUS'. Crohn's also = COBBLESTONE, FISTULAS, ANAL disease. UC = BLOODY diarrhea, RECTUM always! 🔄"
+  },
+  {
+    n:96, topic:"Gastroenterology",
+    q:"Female, 28 years old, intermittent upper abdominal pain for 5 years, sudden worsening with vomiting of large amounts of food (previously eaten). Exam: water splash sound in upper abdomen. Most likely diagnosis?",
+    choices:["A. Superior mesenteric artery syndrome","B. Peptic ulcer with pyloric obstruction","C. Gastroesophageal reflux disease","D. Gastric cancer","E. Chronic gastritis"],
+    ans:1,
+    exp:"PYLORIC OBSTRUCTION from peptic ulcer: Chronic ulcer history (5 years) + sudden inability to empty stomach (projectile vomiting of old food) + SUCCESSION SPLASH (water vibration/splash sound = retained fluid in stomach) = pyloric obstruction. Scarring from repeated ulceration narrows the pylorus. Distinguishing feature: vomiting previously ingested food hours later + splash sign.",
+    kw:["Pyloric obstruction","Peptic ulcer complication","Succession splash","Gastric outlet obstruction","Projectile vomiting"],
+    nv:"Gastric outlet obstruction: pH of vomit is low (gastric acid) | Metabolic alkalosis from HCl loss",
+    tip:"Succession splash = RETAINED FOOD in stomach = PYLORIC OBSTRUCTION! Vomiting old food hours after eating = stomach can't empty. Peptic ulcer scar → narrow pylorus → food stuck! 💧"
+  },
+  {
+    n:97, topic:"Psychiatry",
+    q:"56-year-old surgeon with depression, reluctantly accepts diagnosis. On paroxetine 40mg for 4 weeks with partial improvement. Admits hearing voices calling him a failure since depression started. Most appropriate statement?",
+    choices:["A. Psychotic depression is unlikely to improve without neuroleptic treatment","B. The patient enjoys his sick role and is inventing symptoms","C. This patient is probably schizophrenic and needs antipsychotic treatment","D. The paroxetine dosage is grossly inadequate","E. The paroxetine is probably the cause of the auditory hallucinations"],
+    ans:0,
+    exp:"PSYCHOTIC DEPRESSION: Depression + mood-congruent hallucinations (voices = failure messages) = psychotic depression. NOT schizophrenia (which has mood-INCONGRUENT features + no prominent depressive syndrome first). Treatment requires ANTIDEPRESSANT + ANTIPSYCHOTIC combination. Paroxetine alone is insufficient for psychotic depression — a neuroleptic is essential. Paroxetine doesn't typically cause hallucinations.",
+    kw:["Psychotic depression","Mood-congruent hallucinations","Antipsychotic","Neuroleptic","SSRI","Combined treatment"],
+    nv:null,
+    tip:"Psychotic depression = depression + MOOD-CONGRUENT hallucinations (about failure, guilt, death). Treat with ANTIDEPRESSANT + ANTIPSYCHOTIC. Antidepressant alone = NOT ENOUGH! 🧠💊"
+  },
+  {
+    n:98, topic:"Infectious Disease/Pharmacology",
+    q:"Which antibacterial drug is the FIRST CHOICE for methicillin-resistant Staphylococcus aureus (MRSA) pneumonia?",
+    choices:["A. Penicillin","B. Vancomycin","C. Penicillin enzyme-resistant semi-synthetic penicillin","D. Cephalosporins","E. Macrolides"],
+    ans:1,
+    exp:"VANCOMYCIN is the drug of choice for MRSA (methicillin-resistant Staphylococcus aureus). MRSA is resistant to all beta-lactam antibiotics (penicillins including anti-staphylococcal ones like oxacillin, and cephalosporins). Vancomycin works by inhibiting cell wall synthesis at a different step (D-Ala-D-Ala binding), bypassing the resistance mechanism. Alternatives: Linezolid, Daptomycin (but not for pneumonia).",
+    kw:["MRSA","Vancomycin","Methicillin resistant","Beta-lactam resistance","Glycopeptide","PBP2a"],
+    nv:"Vancomycin trough target: 10-20 mg/L for serious infections | MRSA = resistant to all beta-lactams",
+    tip:"MRSA = VANCOMYCIN! MRSA resists all penicillins and cephalosporins (beta-lactams). Vancomycin = GLYCOPEPTIDE = different mechanism = still works! 'VAN-co-mycin VANQUISHES MRSA!' 🔫"
+  },
+  {
+    n:99, topic:"Hematology",
+    q:"Same patient (36yo female, acute leukemia). Which is the most TYPICAL manifestation for acute leukemia?",
+    choices:["A. Hepatomegaly","B. Sternal tenderness","C. Lymphadenopathy","D. Petechia","E. Purpura"],
+    ans:3,
+    exp:"STERNAL TENDERNESS is the most TYPICAL/characteristic physical finding of ACUTE LEUKEMIA. When you press on the sternum, it is painful because the marrow is PACKED with leukemic blast cells (under pressure). This is pathognomonic for acute leukemia. Petechiae, hepatomegaly, and lymphadenopathy can occur but are less specific. Sternal tenderness = bone marrow pain from crowded blasts.",
+    kw:["Sternal tenderness","Acute leukemia","Bone marrow","Blast cells","Physical examination","Pathognomonic"],
+    nv:"Normal: sternal pressure should not be painful | Sternal tenderness = marrow under pressure from blasts",
+    tip:"STERNAL TENDERNESS = Classic LEUKEMIA sign! Press the sternum → OUCH = marrow full of blasts. 'STERN warning from blasts = STERNAL tenderness!' Remember this for acute leukemia! 🦴"
+  },
+  {
+    n:100, topic:"Neurology",
+    q:"Which is NOT a pain sensitive structure?",
+    choices:["A. Scalp","B. Brain parenchyma","C. Trigeminal nerve","D. Cranial sinuses","E. 3rd cervical nerve"],
+    ans:1,
+    exp:"BRAIN PARENCHYMA (the actual brain tissue itself) is NOT pain-sensitive — it has no pain receptors (nociceptors). This is why brain surgery can be done under local anesthesia with awake patients. Pain-sensitive intracranial structures: meninges (especially dura), blood vessels, cranial nerves (V, IX, X, upper cervical nerves), scalp, cranial sinuses, periosteum. Headache arises from these structures, NOT the brain itself.",
+    kw:["Brain parenchyma","Pain sensitive","Headache","Dura mater","Nociceptors","Intracranial pain"],
+    nv:null,
+    tip:"Brain = NO PAIN receptors! That's why neurosurgeons can operate on awake patients. Pain in headaches comes from MENINGES, VESSELS, NERVES — not brain tissue. 'Brain is PAIN-FREE!' 🧠🚫"
+  }
+];
+
+let current = 0;
+let answered = {};
+let filter = 'all';
+let filteredList = qs.map((_,i)=>i);
+
+function setFilter(f){
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  applyFilter();
+  current = 0;
+  render();
+}
+
+function applyFilter(){
+  if(filter==='all') filteredList = qs.map((_,i)=>i);
+  else if(filter==='wrong') filteredList = qs.map((_,i)=>i).filter(i=>answered[i]==='wrong');
+  else if(filter==='unanswered') filteredList = qs.map((_,i)=>i).filter(i=>!answered[i]);
+}
+
+function gotoQ(val){
+  const n = parseInt(val)-1;
+  if(n>=0 && n<qs.length){
+    const idx = filteredList.indexOf(n);
+    if(idx>=0){ current=idx; render(); }
+    else{ alert('Q'+val+' not in current filter. Switching to All.'); filter='all'; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.querySelector('.filter-btn').classList.add('active'); applyFilter(); current=n; render(); }
+  }
+}
+
+function move(dir){
+  current = Math.max(0, Math.min(filteredList.length-1, current+dir));
+  render();
+}
+
+function skipQ(){
+  if(!answered[filteredList[current]]) answered[filteredList[current]]='skip';
+  move(1);
+}
+
+function choose(qi, ci, correct){
+  if(answered[qi]) return;
+  answered[qi] = (ci===correct)?'correct':'wrong';
+  render();
+}
+
+function render(){
+  applyFilter();
+  if(filteredList.length===0){ document.getElementById('q-area').innerHTML='<p style="color:var(--color-text-secondary);padding:1rem 0;">No questions match this filter.</p>'; return; }
+  current = Math.max(0, Math.min(filteredList.length-1, current));
+  const qi = filteredList[current];
+  const q = qs[qi];
+  const ans = answered[qi];
+  const correct = q.ans;
+
+  let choicesHTML = q.choices.map((c,i)=>{
+    let cls = 'choice-btn';
+    let dis = ans?'disabled':'';
+    if(ans && i===correct) cls+=' correct';
+    if(ans && i!==correct && ((ans==='wrong' && i!==correct && answered[qi]!='correct') || false)) cls+=''
+    if(ans==='wrong'){
+      const chosen = q.choices.findIndex((_,idx)=>idx!==correct && ans==='wrong');
+    }
+    if(ans && i===correct) cls='choice-btn correct';
+    return `<button class="${cls}" ${dis} onclick="choose(${qi},${i},${correct})">${c}</button>`;
+  }).join('');
+
+  if(ans==='wrong'){
+    const wrongIdx = q.choices.findIndex((_,i)=> i!==correct);
+    choicesHTML = q.choices.map((c,i)=>{
+      let cls='choice-btn';
+      if(i===correct) cls+=' correct';
+      return `<button class="${cls}" disabled>${c}</button>`;
+    }).join('');
+  }
+
+  const revClass = ans ? 'reveal-section show' : 'reveal-section';
+  const normalVals = q.nv ? `<div class="section-label">📊 Normal values</div><div class="normal-vals">${q.nv}</div>` : '';
+
+  const emojiMap = {correct:'✅',wrong:'❌',skip:'⏭️'};
+
+  document.getElementById('q-area').innerHTML = `
+    <div class="q-card">
+      <div class="q-num">Question ${q.n} of 100 — ${q.topic} ${ans?emojiMap[ans]:''}</div>
+      <div class="q-text">${q.q}</div>
+      <div class="choices">${choicesHTML}</div>
+      <div class="${revClass}">
+        <div class="section-label">✅ Correct answer</div>
+        <div class="answer-badge">${q.choices[correct]}</div>
+        <div class="section-label" style="margin-top:10px;">💡 Explanation</div>
+        <div class="explanation">${q.exp}</div>
+        <div class="section-label" style="margin-top:10px;">🔑 Key words</div>
+        <div class="keywords">${q.kw.map(k=>`<span class="kw">${k}</span>`).join('')}</div>
+        ${normalVals}
+        <div class="section-label" style="margin-top:10px;">🧠 Study tip</div>
+        <div class="tip">${q.tip}</div>
+      </div>
+    </div>
+  `;
+
+  const total = qs.length;
+  const cor = Object.values(answered).filter(v=>v==='correct').length;
+  const wrg = Object.values(answered).filter(v=>v==='wrong').length;
+  const skp = Object.values(answered).filter(v=>v==='skip').length;
+  document.getElementById('prog').style.width = (Object.keys(answered).length/total*100)+'%';
+  document.getElementById('cur-stat').textContent = qi+1;
+  document.getElementById('cor-stat').textContent = cor;
+  document.getElementById('wrg-stat').textContent = wrg;
+  document.getElementById('skp-stat').textContent = skp;
+  document.getElementById('q-cnt').textContent = `${current+1} / ${filteredList.length} ${filter!=='all'?'(filtered)':''}`;
+}
+
+render();
+</script>
